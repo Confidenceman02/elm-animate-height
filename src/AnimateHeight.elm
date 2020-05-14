@@ -15,7 +15,7 @@ module AnimateHeight exposing
 
 We avoid using terms such as 'open' and 'closed' when animating height.
 
-Instead we say that we are animating high or low position which is more inline to what you are seeing.
+Instead we say that we are animating to a high or low position which is more inline to what you are seeing.
 
 @docs toHigh, toLow, Msg, recalculate, isHigh, update
 

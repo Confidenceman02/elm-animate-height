@@ -23,7 +23,7 @@ init = initialState (uniqueContainerId "123")
 ```
 
 
-__Subcribe to AnimateHeight subscription.__
+__Subscribe to AnimateHeight subscription.__
 
 ```elm
 subscriptions : Model -> Sub Msg
