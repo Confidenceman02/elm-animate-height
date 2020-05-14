@@ -157,8 +157,11 @@ heightToLowWhenTransition adjustment scene =
         Just (Recalc _) ->
             Pixel scene.height
 
-        Just (Interrupt _) ->
-            Pixel scene.height
+        Just (Interrupt (Resolved data)) ->
+            Pixel data.targetHeight
+
+        Just (Interrupt Triggered) ->
+            Pixel 0
 
         _ ->
             Pixel 0
@@ -363,7 +366,7 @@ interruptDataToLow now dt targetHeight calculatedHeight scene duration_ animatio
                     { startingHeight = 0, duration = 0, interruptedAt = now, targetHeight = scene.height }
 
         Transition ->
-            transitionInterruptData now dt
+            transitionInterruptData now dt targetHeight
 
 
 interruptDataToHigh : Time.Posix -> Int -> CalculatedHeight -> Scene -> Duration -> AnimationStrategy -> InterruptData
@@ -379,7 +382,7 @@ interruptDataToHigh now dt calculatedHeight scene duration_ animationStrategy =
                     { startingHeight = 0, duration = 0, interruptedAt = now, targetHeight = scene.height }
 
         Transition ->
-            transitionInterruptData now dt
+            transitionInterruptData now dt scene.height
 
 
 type AnimationStrategy
@@ -387,9 +390,9 @@ type AnimationStrategy
     | AnimationFrame
 
 
-transitionInterruptData : Time.Posix -> Int -> InterruptData
-transitionInterruptData now dt =
-    { startingHeight = 0, duration = toFloat dt, interruptedAt = now, targetHeight = 0 }
+transitionInterruptData : Time.Posix -> Int -> Float -> InterruptData
+transitionInterruptData now dt targetHeight =
+    { startingHeight = 0, duration = toFloat dt, interruptedAt = now, targetHeight = targetHeight }
 
 
 containerIdToString : UniqueContainerId -> String
@@ -556,7 +559,7 @@ updateAnimateHeight msg state_ =
                             case state_.adjustment of
                                 Just (Interrupt Triggered) ->
                                     let
-                                        adjustment =
+                                        newAdjustment =
                                             Just <| Interrupt (Resolved <| interruptDataToLow now deltaTime 0 heightToLow scene duration_ state_.animationStrategy)
                                     in
                                     ( { state_
@@ -564,7 +567,7 @@ updateAnimateHeight msg state_ =
                                             AnimateLow scene
                                         , calculatedHeight =
                                             heightToLow
-                                        , adjustment = adjustment
+                                        , adjustment = newAdjustment
                                         , startTime = Just now
                                       }
                                     , Cmd.none
