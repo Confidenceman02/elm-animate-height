@@ -462,6 +462,10 @@ fast (State state_) =
 
 {-| Set a custom duration.
 
+Negative values will be converted to their positive equivalent.
+
+        custom -200 => 200
+
         init =
             initialState (containerUniqueId "123")
                 |> custom 1000
@@ -469,7 +473,15 @@ fast (State state_) =
 -}
 custom : Float -> State -> State
 custom f (State state_) =
-    State { state_ | duration = Custom f }
+    let
+        d =
+            if f < 0 then
+                f * -1
+
+            else
+                f
+    in
+    State { state_ | duration = Custom d }
 
 
 {-| Use as an initial state for your `AnimateHeight` `container`.
