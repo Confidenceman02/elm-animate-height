@@ -51,9 +51,9 @@ recalcData =
     Recalc (Resolved 100)
 
 
-tests : Test
-tests =
-    describe "helpers"
+internal : Test
+internal =
+    describe "internal tests"
         [ describe "isHigh"
             [ test "returns true when step is High" <|
                 \() ->
@@ -141,20 +141,43 @@ tests =
             ]
         , describe "interruptDataToLow"
             [ describe "when strategy is AnimationFrame"
-                [ describe "when the target height and the scene height are both 0"
-                    [ test "should return the original duration" <|
+                [ describe "when the step is Interrupt Triggered"
+                    [ describe "when the target height and the scene height are both 0"
+                        [ test "should return the original duration" <|
+                            let
+                                interrupt =
+                                    interruptDataToLow now dt 0 (Pixel 200) { height = 0 } Fast AnimationFrame
+                            in
+                            \() ->
+                                Expect.equal (durationToMillis Fast) (interrupt |> .duration)
+                        ]
+                    ]
+                ]
+            , describe "when the strategy is Transition"
+                [ describe "when the target height is 0"
+                    [ test "it sets the targetHeight field to 0" <|
                         let
                             interrupt =
-                                interruptDataToLow now dt 0 (Pixel 200) { height = 0 } Fast AnimationFrame
+                                interruptDataToLow now dt 0 (Pixel 200) { height = 0 } Fast Transition
                         in
                         \() ->
-                            Expect.equal (durationToMillis Fast) (interrupt |> .duration)
+                            Expect.equal 0 (interrupt |> .targetHeight)
+                    ]
+                , describe "when the target height is the scene height"
+                    [ test " it sets the targetHeight field to the scene height value" <|
+                        let
+                            interrupt =
+                                interruptDataToLow now dt scene.height (Pixel 200) { height = 0 } Fast Transition
+                        in
+                        \() -> Expect.equal scene.height (interrupt |> .targetHeight)
                     ]
                 ]
             ]
         , describe "transitionInterruptData"
-            [ test "should set duration to the delta time" <|
-                \() -> Expect.equal (toFloat dt) (transitionInterruptData now dt |> .duration)
+            [ describe "when the strategy is Transition"
+                [ test "should set duration to the delta time" <|
+                    \() -> Expect.equal (toFloat dt) (transitionInterruptData now dt scene.height |> .duration)
+                ]
             ]
         , describe "durationToMillis"
             [ describe "when duration is Instant"
