@@ -25,6 +25,7 @@ import AnimateHeight.Internal exposing (..)
 import Css as Css
 import Css.Transitions as Transitions
 import Html exposing (Html, text)
+import Html.Lazy exposing (lazy)
 import Html.Styled as Styled
 import Html.Styled.Attributes as StyledAttribs
 
@@ -70,6 +71,11 @@ subscription (State state_) =
 -}
 container : Config msg -> Html msg
 container (Config config) =
+    lazy viewContainer config
+
+
+viewContainer : Configuration msg -> Html msg
+viewContainer config =
     let
         (State state_) =
             config.state
