@@ -4,17 +4,16 @@ Animate the height of a container to its contents
 ## Key features
 
 ### Simple api
-Simply get any view and `elm-animate-height`
+Get any view and `elm-animate-height`
 will take care of animating.. well.. the height!
 
 ### Hides complexity
 Animating the height of a container in a resilient way can get really tricky really fast! There's 
 performance, dom queries, height information to manage, timing calculations, interruptions and a whole 
 lot of gnarly edge cases. 
-From the outset `elm-animate-height`'s number one goal was to make set up as frictionless as possible.
+From the outset `elm-animate-height`'s number one goal was to make setup as frictionless as possible.
 
-Here are the steps,
-
+## Usage
 __Set an initial state__ in your model.
 
 ```elm
@@ -34,6 +33,8 @@ subscriptions model =
 __Set up an update `Msg`__ in your update function.
 
 ```elm
+    update : Msg -> State -> (State, Cmd Msg)
+    update msg state =
         AnimateMsg animMsg ->
             let
                 (newState, cmds) = update model.animState
@@ -41,7 +42,7 @@ __Set up an update `Msg`__ in your update function.
             ({ model | animState = newState }, Cmd.map AnimateHeight cmds)
 
 ```
-__Render your view__ in our container.
+__Render your view__ in the `AnimateHeight` container.
 
 ```elm
 someCoolView : Html Msg
@@ -76,10 +77,10 @@ can be expensive.
 `elm-animate-height` gives you two strategies in which to perform 
 the animation, `Transition` and `AnimationFrame`.
 
-`Transition` leverages css transitions to perform the animation which 
+ - `Transition` leverages css transitions to perform the animation which 
 means no view updates are triggered on the container.
 
-`AnimationFrame` will trigger view updates but manually calculates the height
+- `AnimationFrame` will trigger view updates but manually calculates the height
 of the container to the browsers refresh cadence.
 
 Which one performs the best in your situation is just 
