@@ -1,6 +1,6 @@
 module AnimateHeight exposing
-    ( State, subscription, container, animationFrame, transition, initialState, instant, immediate, rapid, fast, custom, content, default, setHigh, snapToContent, state, uniqueContainerId
-    , toHigh, toLow, Msg, recalculate, isHigh, update
+    ( State, subscription, container, animationFrame, transition, initialState, instant, immediate, rapid, fast, custom, content, default, setAtContentHeight, snapToContent, state, uniqueContainerId
+    , toContentHeight, toMinHeight, Msg, recalculate, isContentHeight, update
     )
 
 {-| Animate a containers height.
@@ -8,16 +8,16 @@ module AnimateHeight exposing
 
 # Set up
 
-@docs State, subscription, container, animationFrame, transition, initialState, instant, immediate, rapid, fast, custom, content, default, setHigh, snapToContent, state, uniqueContainerId
+@docs State, subscription, container, animationFrame, transition, initialState, instant, immediate, rapid, fast, custom, content, default, setAtContentHeight, snapToContent, state, uniqueContainerId
 
 
 # Trigger an animation
 
 We avoid using terms such as 'open' and 'closed' when animating height.
 
-Instead we say that we are animating to a high or low position which is more inline to what you are seeing.
+Instead we say that we are animating to a content height or minimum height which is more inline to what you are seeing.
 
-@docs toHigh, toLow, Msg, recalculate, isHigh, update
+@docs toContentHeight, toMinHeight, Msg, recalculate, isContentHeight, update
 
 -}
 
@@ -201,11 +201,11 @@ setTransitions state_ =
                     durationToMillis state_.duration
     in
     case state_.step of
-        AnimateHigh _ ->
+        AnimateToContent _ ->
             [ Transitions.transition <| [ Transitions.height3 duration_ 0 (timingToCssTimingFunction state_.timing) ]
             ]
 
-        AnimateLow _ ->
+        AnimateToMin _ ->
             [ Transitions.transition <| [ Transitions.height3 duration_ 0 (timingToCssTimingFunction state_.timing) ]
             ]
 
@@ -247,13 +247,13 @@ recalculate ((State state_) as s) =
                 AnimationFrame ->
                     case state_.step of
                         -- its more of a QueryForHigh than a Recalc
-                        Low ->
-                            toHigh s
+                        ToMin ->
+                            toContentHeight s
 
-                        AnimateHigh _ ->
+                        AnimateToContent _ ->
                             State { state_ | step = QueryForRecalc QueryViewport, adjustment = Just <| Recalc Triggered }
 
-                        AnimateLow _ ->
+                        AnimateToMin _ ->
                             State { state_ | step = QueryForRecalc QueryViewport, adjustment = Just <| Recalc Triggered }
 
                         _ ->
@@ -261,10 +261,10 @@ recalculate ((State state_) as s) =
 
                 Transition ->
                     case state_.step of
-                        High ->
+                        ToContent ->
                             State { state_ | step = QueryForRecalc QueryViewport, adjustment = Just <| Recalc (Resolved ch) }
 
-                        Low ->
+                        ToMin ->
                             State { state_ | step = QueryForRecalc QueryViewport, adjustment = Just <| Recalc (Resolved ch) }
 
                         _ ->
@@ -289,84 +289,84 @@ snapToContent snap (State state_) =
     State { state_ | snapToContent = snap }
 
 
-{-| For when you want to start the `container` off high by default and not
+{-| For when you want to start the `container` off at a its content height by default and not
 trigger an animation.
 
 One use case could be when a page loads and you want all your `AnimateHeight` `containers`
 to show their content by default.
 
-You can use `setHigh` in init.
+You can use `setAtContentHeight` in init.
 
     init =
         initialState (uniqueContainerId "id")
-            |> setHigh
+            |> setAtContentHeight
 
 -}
-setHigh : State -> State
-setHigh (State animState) =
-    State { animState | step = High, calculatedHeight = Auto, warmUpScene = True }
+setAtContentHeight : State -> State
+setAtContentHeight (State animState) =
+    State { animState | step = ToContent, calculatedHeight = Auto, warmUpScene = True }
 
 
-{-| Animate a container to its high position.
-
-        update msg =
-            case msg of
-                ToggleContainer ->
-                    toHigh animState
-
-You might want to use `isHigh` to toggle between animating low and high.
+{-| Animate a container to its content height.
 
         update msg =
             case msg of
                 ToggleContainer ->
-                    if (isHigh animState) then
-                        toLow animState
+                    toContentHeight animState
+
+You might want to use `isContentHeight` to toggle between animating toContentHeight and toMinHeight.
+
+        update msg =
+            case msg of
+                ToggleContainer ->
+                    if (isContentHeight animState) then
+                        toMinHeight animState
                     else
-                        toHigh animState
+                        toContentHeight animState
 
 -}
-toHigh : State -> State
-toHigh (State state_) =
+toContentHeight : State -> State
+toContentHeight (State state_) =
     case state_.step of
-        AnimateLow _ ->
+        AnimateToMin _ ->
             State { state_ | adjustment = Just <| Interrupt Triggered }
 
-        AnimateHigh _ ->
+        AnimateToContent _ ->
             State { state_ | adjustment = Just <| Interrupt Triggered }
 
         _ ->
-            State { state_ | step = QueryForHigh QueryViewport }
+            State { state_ | step = QueryForContent QueryViewport }
 
 
-{-| Animate a container to its low position.
-
-        update msg =
-            case msg of
-                ToggleContainer ->
-                    toLow animState
-
-You might want to use `isHigh` to toggle between animating low and high.
+{-| Animate a container to its minimum height.
 
         update msg =
             case msg of
                 ToggleContainer ->
-                    if (isHigh animState) then
-                        toLow animState
+                    toMinHeight animState
+
+You might want to use `isContentHeight` to toggle between animating toMinHeight and toContentHeight.
+
+        update msg =
+            case msg of
+                ToggleContainer ->
+                    if (isContentHeight animState) then
+                        toMinHeight animState
                     else
-                        toHigh animState
+                        toContentHeight animState
 
 -}
-toLow : State -> State
-toLow (State state_) =
+toMinHeight : State -> State
+toMinHeight (State state_) =
     case state_.step of
-        AnimateHigh _ ->
+        AnimateToContent _ ->
             State { state_ | adjustment = Just <| Interrupt Triggered }
 
-        AnimateLow _ ->
+        AnimateToMin _ ->
             State { state_ | adjustment = Just <| Interrupt Triggered }
 
         _ ->
-            State { state_ | step = QueryForLow QueryViewport }
+            State { state_ | step = QueryForMin QueryViewport }
 
 
 {-| Determine if a container is high.
@@ -382,10 +382,10 @@ Useful for when you need to toggle a `container` high and low.
                         toHigh animState
 
 -}
-isHigh : State -> Bool
-isHigh (State state_) =
+isContentHeight : State -> Bool
+isContentHeight (State state_) =
     case state_.step of
-        High ->
+        ToContent ->
             True
 
         _ ->
@@ -502,7 +502,7 @@ to avoid weird behaviour. Internally we add some extra characters to your id to 
 initialState : UniqueContainerId -> State
 initialState containerId =
     State
-        { step = Low
+        { step = ToMin
         , containerId = containerId
         , duration = Fast
         , timing = Ease

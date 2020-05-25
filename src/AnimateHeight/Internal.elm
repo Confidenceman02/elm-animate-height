@@ -45,12 +45,12 @@ type QueryLifeCycle
 
 
 type Step
-    = High
-    | Low
-    | QueryForHigh QueryLifeCycle
-    | AnimateHigh Scene
-    | QueryForLow QueryLifeCycle
-    | AnimateLow Scene
+    = ToContent
+    | ToMin
+    | QueryForContent QueryLifeCycle
+    | AnimateToContent Scene
+    | QueryForMin QueryLifeCycle
+    | AnimateToMin Scene
     | QueryForRecalc QueryLifeCycle
 
 
@@ -418,13 +418,13 @@ internalSubs state_ =
         QueryForRecalc QueryViewport ->
             query QueryViewportForRecalc
 
-        QueryForHigh QueryViewport ->
+        QueryForContent QueryViewport ->
             query QueryViewportForHigh
 
-        AnimateHigh _ ->
+        AnimateToContent _ ->
             animate ToHigh
 
-        High ->
+        ToContent ->
             case ( state_.snapToContent, state_.warmUpScene ) of
                 ( True, False ) ->
                     Sub.none
@@ -435,10 +435,10 @@ internalSubs state_ =
                 _ ->
                     Sub.none
 
-        QueryForLow QueryViewport ->
+        QueryForMin QueryViewport ->
             animate QueryViewportForLow
 
-        AnimateLow _ ->
+        AnimateToMin _ ->
             animate ToLow
 
         _ ->
@@ -459,13 +459,13 @@ updateAnimateHeight msg state_ =
                     let
                         step =
                             if ch < viewPort.scene.height then
-                                AnimateHigh { height = viewPort.scene.height }
+                                AnimateToContent { height = viewPort.scene.height }
 
                             else if ch == viewPort.scene.height then
                                 state_.step
 
                             else
-                                AnimateLow { height = viewPort.scene.height }
+                                AnimateToMin { height = viewPort.scene.height }
                     in
                     ( { state_ | step = step }, Cmd.none )
 
@@ -477,7 +477,7 @@ updateAnimateHeight msg state_ =
 
         QueryViewportForHigh _ ->
             ( { state_
-                | step = QueryForHigh QueryResolving
+                | step = QueryForContent QueryResolving
               }
             , Task.attempt ViewportForHigh <| BrowserDom.getViewportOf (containerIdToString state_.containerId)
             )
@@ -486,16 +486,16 @@ updateAnimateHeight msg state_ =
             let
                 ( step, ch ) =
                     if state_.warmUpScene && state_.snapToContent then
-                        ( High, Auto )
+                        ( ToContent, Auto )
 
                     else if state_.warmUpScene then
-                        ( High, Pixel viewPort.scene.height )
+                        ( ToContent, Pixel viewPort.scene.height )
 
                     else if viewPort.scene.height == 0 then
-                        ( High, Pixel viewPort.scene.height )
+                        ( ToContent, Pixel viewPort.scene.height )
 
                     else
-                        ( AnimateHigh { height = viewPort.scene.height }, state_.calculatedHeight )
+                        ( AnimateToContent { height = viewPort.scene.height }, state_.calculatedHeight )
             in
             ( { state_
                 | warmUpScene = False
@@ -509,7 +509,7 @@ updateAnimateHeight msg state_ =
         -- lets snap high so the content can be seen.
         ViewportForHigh (Err _) ->
             ( { state_
-                | step = High
+                | step = ToContent
                 , calculatedHeight = Auto
                 , warmUpScene = False
               }
@@ -517,21 +517,21 @@ updateAnimateHeight msg state_ =
             )
 
         QueryViewportForLow _ ->
-            ( { state_ | step = QueryForLow QueryResolving }, Task.attempt ViewportForLow <| BrowserDom.getViewportOf (containerIdToString state_.containerId) )
+            ( { state_ | step = QueryForMin QueryResolving }, Task.attempt ViewportForLow <| BrowserDom.getViewportOf (containerIdToString state_.containerId) )
 
         ViewportForLow (Ok viewPort) ->
             -- We want to set the calculated height from auto to a pixel value here without animating.
             -- The transition style will not automatically animate from auto to a pixel.
             ( { state_
                 | calculatedHeight = Pixel viewPort.scene.height
-                , step = AnimateLow { height = viewPort.scene.height }
+                , step = AnimateToMin { height = viewPort.scene.height }
               }
             , Cmd.none
             )
 
         ViewportForLow (Err _) ->
             ( { state_
-                | step = Low
+                | step = ToMin
                 , calculatedHeight = Pixel 0
               }
             , Cmd.none
@@ -539,7 +539,7 @@ updateAnimateHeight msg state_ =
 
         ToHigh now ->
             case state_.step of
-                AnimateHigh scene ->
+                AnimateToContent scene ->
                     case state_.startTime of
                         Just start ->
                             let
@@ -564,7 +564,7 @@ updateAnimateHeight msg state_ =
                                     in
                                     ( { state_
                                         | step =
-                                            AnimateLow scene
+                                            AnimateToMin scene
                                         , calculatedHeight =
                                             heightToLow
                                         , adjustment = newAdjustment
@@ -592,7 +592,7 @@ updateAnimateHeight msg state_ =
 
                                     else
                                         ( { state_
-                                            | step = High
+                                            | step = ToContent
                                             , startTime = Nothing
                                             , adjustment = Nothing
                                             , calculatedHeight = calculatedHeightWhenHigh scene state_.snapToContent
@@ -621,7 +621,7 @@ updateAnimateHeight msg state_ =
 
         ToLow now ->
             case state_.step of
-                AnimateLow scene ->
+                AnimateToMin scene ->
                     case state_.startTime of
                         Just start ->
                             let
@@ -663,7 +663,7 @@ updateAnimateHeight msg state_ =
                                             Just <| Interrupt (Resolved <| interruptDataToHigh now deltaTime heightToHigh scene duration_ state_.animationStrategy)
                                     in
                                     ( { state_
-                                        | step = AnimateHigh scene
+                                        | step = AnimateToContent scene
                                         , calculatedHeight = heightToHigh
                                         , adjustment = adjustment
                                         , startTime = Just now
@@ -684,10 +684,10 @@ updateAnimateHeight msg state_ =
                                     let
                                         step =
                                             if isLowest then
-                                                Low
+                                                ToMin
 
                                             else
-                                                High
+                                                ToContent
                                     in
                                     if deltaTime < round (durationToMillis duration_) then
                                         ( { state_

@@ -54,11 +54,11 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg (( state, content ) as model) =
     case msg of
         Toggle ->
-            if AnimateHeight.isHigh state then
-                ( ( AnimateHeight.toLow state, content ), Cmd.none )
+            if AnimateHeight.isContentHeight state then
+                ( ( AnimateHeight.toMinHeight state, content ), Cmd.none )
 
             else
-                ( ( AnimateHeight.toHigh state, content ), Cmd.none )
+                ( ( AnimateHeight.toContentHeight state, content ), Cmd.none )
 
         AddTo ->
             ( ( AnimateHeight.recalculate state, content ++ [ p [] [ text loremIpsum ] ] ), Cmd.none )
@@ -95,7 +95,7 @@ subscriptions ( state, _ ) =
 init : ( Model, Cmd Msg )
 init =
     ( ( AnimateHeight.initialState (AnimateHeight.uniqueContainerId "paragraph")
-            |> AnimateHeight.setHigh
+            |> AnimateHeight.setAtContentHeight
             |> AnimateHeight.rapid
       , [ text loremIpsum ]
       )

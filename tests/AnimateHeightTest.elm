@@ -1,6 +1,6 @@
 module AnimateHeightTest exposing (..)
 
-import AnimateHeight exposing (initialState, isHigh, setHigh, uniqueContainerId)
+import AnimateHeight exposing (initialState, isContentHeight, setAtContentHeight, uniqueContainerId)
 import AnimateHeight.Internal exposing (..)
 import Expect
 import Test exposing (Test, describe, test)
@@ -57,10 +57,10 @@ internal =
         [ describe "isHigh"
             [ test "returns true when step is High" <|
                 \() ->
-                    Expect.true "Step must be High to be true" (isHigh (initialState (uniqueContainerId "123") |> setHigh))
+                    Expect.true "Step must be High to be true" (isContentHeight (initialState (uniqueContainerId "123") |> setAtContentHeight))
             , test "is not true when step is Low" <|
                 \() ->
-                    Expect.false "Step must be High to be true" (isHigh (initialState (uniqueContainerId "123")))
+                    Expect.false "Step must be High to be true" (isContentHeight (initialState (uniqueContainerId "123")))
             ]
         , describe "deltaAndDuration"
             [ describe "with no interrupt"
