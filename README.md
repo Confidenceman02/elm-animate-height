@@ -63,10 +63,10 @@ __Trigger an Animation__ in your update statement.
 ```elm
     case msg of
         ShowContainerStuff ->
-            (toHigh animHeightState, Cmd.none)
+            (toContentHeight animHeightState, Cmd.none)
             
         HideContainerStuff ->
-            (toLow animHeightState, Cmd.none)
+            (toMinHeight animHeightState, Cmd.none)
 ```
 
 ### Focus on performance
