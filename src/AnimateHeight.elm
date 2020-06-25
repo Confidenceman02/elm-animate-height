@@ -102,7 +102,6 @@ sizerContainer id_ c =
             [ Css.height (Css.px 0)
             , Css.overflow Css.hidden
             , Css.visibility Css.hidden
-            , Css.position Css.absolute
             , Css.top (Css.px 0)
             ]
         ]
