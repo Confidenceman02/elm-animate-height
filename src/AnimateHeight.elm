@@ -21,7 +21,26 @@ Instead we say that we are animating to a content height or minimum height which
 
 -}
 
-import AnimateHeight.Internal exposing (..)
+import AnimateHeight.Internal
+    exposing
+        ( Adjustment(..)
+        , AdjustmentAction(..)
+        , AnimationState
+        , AnimationStrategy(..)
+        , Bezier(..)
+        , CalculatedHeight(..)
+        , Duration(..)
+        , InternalMsg(..)
+        , QueryLifeCycle(..)
+        , Step(..)
+        , TimingFunction(..)
+        , UniqueContainerId
+        , buildContainerId
+        , containerIdToString
+        , durationToMillis
+        , internalSubs
+        , updateAnimateHeight
+        )
 import Css as Css
 import Css.Transitions as Transitions
 import Html exposing (Html, text)
@@ -124,7 +143,7 @@ sizerContainer id_ c =
 
 -}
 update : Msg -> State -> ( State, Cmd Msg )
-update msg ((State state_) as s) =
+update msg (State state_) =
     case msg of
         Internal internalMsg ->
             let
