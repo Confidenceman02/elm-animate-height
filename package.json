@@ -1,0 +1,27 @@
+{
+  "name": "elm-animate-height",
+  "version": "1.0.0",
+  "description": "Animate the height of a container to its contents",
+  "main": "index.js",
+  "directories": {
+    "example": "examples",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Confidenceman02/elm-animate-height.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Confidenceman02/elm-animate-height/issues"
+  },
+  "homepage": "https://github.com/Confidenceman02/elm-animate-height#readme",
+  "devDependencies": {
+    "elm-analyse": "^0.16.5"
+  }
+}
