@@ -251,7 +251,7 @@ This function makes the most sense to use when the container is already in a hig
         case msg of
             ContentAdded ->
                 newState =
-                    if isHigh model.animateHeightState then
+                    if isContentHeight model.animateHeightState then
                         recalculate model.animateHeightState
                     else
                         model.animateHeightState
@@ -394,10 +394,10 @@ Useful for when you need to toggle a `container` high and low.
         update msg =
             case msg of
                 ToggleContainer ->
-                    if (isHigh animState) then
-                        toLow animState
+                    if (isContentHight animState) then
+                        toMinHeight animState
                     else
-                        toHigh animState
+                        toContentHeight animState
 
 -}
 isContentHeight : State -> Bool
