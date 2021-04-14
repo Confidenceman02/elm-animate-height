@@ -1,7 +1,6 @@
 module AnimateHeight exposing
-    ( subscription, container, animationFrame, transition, initialState, instant, immediate, rapid, fast, custom, content, overflow, default, setAtContentHeight, snapToContent, state, uniqueContainerId
+    ( Overflow(..), State, subscription, container, animationFrame, transition, initialState, instant, immediate, rapid, fast, custom, content, overflow, default, setAtContentHeight, snapToContent, state, uniqueContainerId
     , toContentHeight, toMinHeight, Msg, recalculate, isContentHeight, update
-    , Overflow(..), State
     )
 
 {-| Animate a containers height.
@@ -9,7 +8,7 @@ module AnimateHeight exposing
 
 # Set up
 
-@docs Overflow State, subscription, container, animationFrame, transition, initialState, instant, immediate, rapid, fast, custom, content, overflow, default, setAtContentHeight, snapToContent, state, uniqueContainerId
+@docs Overflow, State, subscription, container, animationFrame, transition, initialState, instant, immediate, rapid, fast, custom, content, overflow, default, setAtContentHeight, snapToContent, state, uniqueContainerId
 
 
 # Trigger an animation
