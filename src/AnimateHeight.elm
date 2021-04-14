@@ -1,6 +1,7 @@
 module AnimateHeight exposing
-    ( State, subscription, container, animationFrame, transition, initialState, instant, immediate, rapid, fast, custom, content, default, setAtContentHeight, snapToContent, state, uniqueContainerId
+    ( subscription, container, animationFrame, transition, initialState, instant, immediate, rapid, fast, custom, content, overflow, default, setAtContentHeight, snapToContent, state, uniqueContainerId
     , toContentHeight, toMinHeight, Msg, recalculate, isContentHeight, update
+    , Overflow(..), State
     )
 
 {-| Animate a containers height.
@@ -8,7 +9,7 @@ module AnimateHeight exposing
 
 # Set up
 
-@docs State, subscription, container, animationFrame, transition, initialState, instant, immediate, rapid, fast, custom, content, default, setAtContentHeight, snapToContent, state, uniqueContainerId
+@docs Overflow State, subscription, container, animationFrame, transition, initialState, instant, immediate, rapid, fast, custom, content, overflow, default, setAtContentHeight, snapToContent, state, uniqueContainerId
 
 
 # Trigger an animation
@@ -63,6 +64,12 @@ type State
     = State AnimationState
 
 
+{-| -}
+type Overflow
+    = VisibleWhenAtContentHeight
+    | Hidden
+
+
 {-| The subscriptions `AnimateHeight` uses to function.
 
         type Msg =
@@ -105,10 +112,22 @@ viewContainer config =
 
             else
                 []
+
+        resolveOverflow =
+            case config.overflow of
+                VisibleWhenAtContentHeight ->
+                    if isContentHeight config.state then
+                        Css.overflow Css.visible
+
+                    else
+                        Css.overflow Css.hidden
+
+                _ ->
+                    Css.overflow Css.hidden
     in
     Styled.toUnstyled <|
         Styled.div
-            [ StyledAttribs.css ([ Css.overflow Css.hidden, calculatedHeightToAttribute state_.calculatedHeight ] ++ transitionAttribs)
+            [ StyledAttribs.css ([ resolveOverflow, calculatedHeightToAttribute state_.calculatedHeight ] ++ transitionAttribs)
             ]
             [ Styled.fromUnstyled config.content, sizerContainer state_.containerId config.content ]
 
@@ -540,11 +559,33 @@ initialState containerId =
 type alias Configuration msg =
     { content : Html msg
     , state : State
+    , overflow : Overflow
     }
 
 
 
 -- CONFIG MODIFIERS
+
+
+{-| Defines the behaviour of the overflow property
+
+You may have an element, such as a dropdown menu, that dynamically
+portrudes the container bondaries and needs to be visible.
+
+        coolView =
+            text "A cool view!"
+
+        view =
+           container (default
+                |> content coolView
+                |> overflow VisibleWhenAtContentHeight
+
+By default the overflow is never set to visible.
+
+-}
+overflow : Overflow -> Config msg -> Config msg
+overflow oFlow (Config config) =
+    Config { config | overflow = oFlow }
 
 
 {-| A starting configuration.
@@ -558,6 +599,7 @@ default =
     Config
         { content = text ""
         , state = initialState (uniqueContainerId "animate-height-container")
+        , overflow = Hidden
         }
 
 
