@@ -566,10 +566,10 @@ type alias Configuration msg =
 -- CONFIG MODIFIERS
 
 
-{-| Defines the behaviour of the overflow property
+{-| Defines the behaviour of the overflow property.
 
 You may have an element, such as a dropdown menu, that dynamically
-portrudes the container bondaries and needs to be visible.
+protrudes the container bondaries and needs to be visible.
 
         coolView =
             text "A cool view!"
@@ -579,7 +579,7 @@ portrudes the container bondaries and needs to be visible.
                 |> content coolView
                 |> overflow VisibleWhenAtContentHeight
 
-By default the overflow is never set to visible.
+By default the overflow is set to Hidden.
 
 -}
 overflow : Overflow -> Config msg -> Config msg
