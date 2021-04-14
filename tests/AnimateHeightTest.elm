@@ -36,9 +36,9 @@ interruptData targetHeight =
     }
 
 
-scene : Scene
-scene =
-    { height = 300 }
+sceneHeight : SceneHeight
+sceneHeight =
+    300
 
 
 timing : TimingFunction
@@ -70,11 +70,11 @@ internal =
             , describe "with Resolved Interrupt data"
                 [ describe "when delta is below duration"
                     [ test "returns the lapsed time and duration from interrupt data" <|
-                        \() -> Expect.equal (deltaAndDuration (Just <| Interrupt (Resolved (interruptData scene.height))) (Time.millisToPosix 283) start duration) ( 3, Custom 280 )
+                        \() -> Expect.equal (deltaAndDuration (Just <| Interrupt (Resolved (interruptData sceneHeight))) (Time.millisToPosix 283) start duration) ( 3, Custom 280 )
                     ]
                 , describe "when delta == duration"
                     [ test "returns the fully lapsed time and duration" <|
-                        \() -> Expect.equal (deltaAndDuration (Just <| Interrupt (Resolved (interruptData scene.height))) (Time.millisToPosix 560) start duration) ( 280, Custom 280 )
+                        \() -> Expect.equal (deltaAndDuration (Just <| Interrupt (Resolved (interruptData sceneHeight))) (Time.millisToPosix 560) start duration) ( 280, Custom 280 )
                     ]
                 ]
             , describe "with Recalc Triggered"
@@ -86,17 +86,17 @@ internal =
         , describe "calculatedHeightWhenHigh"
             [ describe "when snapToContent is True"
                 [ test "should set the calculated height to Auto" <|
-                    \() -> Expect.equal (calculatedHeightWhenHigh scene True) Auto
+                    \() -> Expect.equal (calculatedHeightWhenHigh sceneHeight True) Auto
                 ]
             , describe "when snapToContent is False"
                 [ test "should set the calculated height to a pixel value" <|
-                    \() -> Expect.equal (calculatedHeightWhenHigh scene False) (Pixel scene.height)
+                    \() -> Expect.equal (calculatedHeightWhenHigh sceneHeight False) (Pixel sceneHeight)
                 ]
             ]
         , describe "heightToLowWhenAnimationFrame"
             [ test "returns 0 pixel CalculatedHeight " <|
                 \() ->
-                    Expect.equal (Pixel 150) (heightToLowWhenAnimationFrame 150 Fast Linear scene Nothing)
+                    Expect.equal (Pixel 150) (heightToLowWhenAnimationFrame 150 Fast Linear sceneHeight Nothing)
             , describe "when the strategy is AnimationFrame"
                 [ describe "when the lapsed time is greater than duration"
                     [ test "should return the lowest height value" <|
@@ -104,7 +104,7 @@ internal =
                             delta =
                                 301 - Time.posixToMillis start
                         in
-                        \() -> Expect.equal (heightToLowWhenAnimationFrame delta duration Linear scene Nothing) (Pixel 0)
+                        \() -> Expect.equal (heightToLowWhenAnimationFrame delta duration Linear sceneHeight Nothing) (Pixel 0)
                     ]
                 ]
             ]
@@ -116,25 +116,25 @@ internal =
                             Time.posixToMillis now - Time.posixToMillis start
                     in
                     \() ->
-                        Expect.equal Auto (heightToHighWhenAnimationFrame delta duration timing scene Auto Nothing)
+                        Expect.equal Auto (heightToHighWhenAnimationFrame delta duration timing sceneHeight Auto Nothing)
                 , describe "when there are adjustments"
                     [ describe "when there is a Resolved Interrupt adjustment"
                         [ describe "when the time lapsed is 0"
                             [ test "should return the starting height in the interrupt data" <|
-                                \() -> Expect.equal (Pixel 300) (heightToHighWhenAnimationFrame 0 duration timing scene (Pixel 280) (Just <| Interrupt (Resolved <| interruptData 0)))
+                                \() -> Expect.equal (Pixel 300) (heightToHighWhenAnimationFrame 0 duration timing sceneHeight (Pixel 280) (Just <| Interrupt (Resolved <| interruptData 0)))
                             ]
                         ]
                     , describe "when there is a Recalc Resolved adjustment"
                         [ describe "when the time lapsed is 50%"
                             [ test "it should return 50% the starting height to viewport height" <|
-                                \() -> Expect.equal (Pixel 200) (heightToHighWhenAnimationFrame 150 Fast Linear scene (Pixel 100) (Just recalcData))
+                                \() -> Expect.equal (Pixel 200) (heightToHighWhenAnimationFrame 150 Fast Linear sceneHeight (Pixel 100) (Just recalcData))
                             ]
                         ]
                     ]
                 , describe "when the time lapsed is 50%"
                     [ describe "when the timing is Linear"
                         [ test "should return 50% of the remaining height" <|
-                            \() -> Expect.equal (Pixel 150) (heightToHighWhenAnimationFrame 150 Fast Linear scene (Pixel 0) Nothing)
+                            \() -> Expect.equal (Pixel 150) (heightToHighWhenAnimationFrame 150 Fast Linear sceneHeight (Pixel 0) Nothing)
                         ]
                     ]
                 ]
@@ -146,7 +146,7 @@ internal =
                         [ test "should return the original duration" <|
                             let
                                 interrupt =
-                                    interruptDataToLow now dt 0 (Pixel 200) { height = 0 } Fast AnimationFrame
+                                    interruptDataToLow now dt 0 (Pixel 200) 0 Fast AnimationFrame
                             in
                             \() ->
                                 Expect.equal (durationToMillis Fast) (interrupt |> .duration)
@@ -158,7 +158,7 @@ internal =
                     [ test "it sets the targetHeight field to 0" <|
                         let
                             interrupt =
-                                interruptDataToLow now dt 0 (Pixel 200) { height = 0 } Fast Transition
+                                interruptDataToLow now dt 0 (Pixel 200) 0 Fast Transition
                         in
                         \() ->
                             Expect.equal 0 (interrupt |> .targetHeight)
@@ -167,16 +167,16 @@ internal =
                     [ test " it sets the targetHeight field to the scene height value" <|
                         let
                             interrupt =
-                                interruptDataToLow now dt scene.height (Pixel 200) { height = 0 } Fast Transition
+                                interruptDataToLow now dt sceneHeight (Pixel 200) 0 Fast Transition
                         in
-                        \() -> Expect.equal scene.height (interrupt |> .targetHeight)
+                        \() -> Expect.equal sceneHeight (interrupt |> .targetHeight)
                     ]
                 ]
             ]
         , describe "transitionInterruptData"
             [ describe "when the strategy is Transition"
                 [ test "should set duration to the delta time" <|
-                    \() -> Expect.equal (toFloat dt) (transitionInterruptData now dt scene.height |> .duration)
+                    \() -> Expect.equal (toFloat dt) (transitionInterruptData now dt sceneHeight |> .duration)
                 ]
             ]
         , describe "durationToMillis"
