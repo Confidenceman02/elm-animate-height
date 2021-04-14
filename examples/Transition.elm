@@ -45,6 +45,7 @@ view ( state, content ) =
                 (AnimateHeight.default
                     |> AnimateHeight.content (span [] content)
                     |> AnimateHeight.state state
+                    |> AnimateHeight.overflow (AnimateHeight.VisibleWhenAtContentHeight)
                 )
             ]
         ]
