@@ -1,4 +1,4 @@
-module AnimateHeight.Constants exposing (..)
+module AnimateHeight.Constants exposing (idSuffix)
 
 
 idSuffix : String
