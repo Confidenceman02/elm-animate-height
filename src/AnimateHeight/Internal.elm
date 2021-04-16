@@ -15,17 +15,17 @@ module AnimateHeight.Internal exposing
     , TimingFunction(..)
     , UniqueContainerId
     , buildContainerId
-    , calculatedHeightWhenHigh
+    , calculatedHeightWhenAtContentHeight
     , containerIdToString
     , deltaAndDuration
     , durationToMillis
     , heightRatio
-    , heightToHighWhenAnimationFrame
-    , heightToHighWhenTransition
-    , heightToLowWhenAnimationFrame
+    , heightToContentHeightWhenAnimationFrame
+    , heightToContentHeightWhenTransition
     , internalSubs
-    , interruptDataToHigh
-    , interruptDataToLow
+    , interruptDataToContentHeight
+    , interruptDataToMinHeight
+    , minHeightWhenAnimationFrame
     , timingToCubicBezierXY
     , transitionInterruptData
     , updateAnimateHeight
@@ -73,14 +73,14 @@ type UniqueContainerId
 
 
 type InternalMsg
-    = QueryViewportForHigh Time.Posix
-    | ViewportForHigh (Result BrowserDom.Error BrowserDom.Viewport)
+    = QueryViewportForContentHeight Time.Posix
+    | ViewportForContentHeight (Result BrowserDom.Error BrowserDom.Viewport)
     | QueryViewportForRecalc Time.Posix
     | ViewportForRecalc (Result BrowserDom.Error BrowserDom.Viewport)
-    | QueryViewportForLow Time.Posix
-    | ViewportForLow (Result BrowserDom.Error BrowserDom.Viewport)
-    | ToHigh Time.Posix
-    | ToLow Time.Posix
+    | QueryViewportForMinHeight Time.Posix
+    | ViewportForMinHeight (Result BrowserDom.Error BrowserDom.Viewport)
+    | ToContentHeight Time.Posix
+    | ToMinHeight Time.Posix
 
 
 type Adjustment
@@ -131,11 +131,11 @@ type Bezier
     = Bezier Float Float Float Float
 
 
-calculateHeightToLow : Int -> Duration -> SceneHeight -> TimingFunction -> AnimationStrategy -> CalculatedHeight -> Maybe Adjustment -> CalculatedHeight
-calculateHeightToLow lapsedTime duration_ scene timing strat currentHeight adjustments =
+calculateMinHeight : Int -> Duration -> SceneHeight -> TimingFunction -> AnimationStrategy -> CalculatedHeight -> Maybe Adjustment -> CalculatedHeight
+calculateMinHeight lapsedTime duration_ scene timing strat currentHeight adjustments =
     case strat of
         Transition ->
-            heightToLowWhenTransition adjustments scene
+            minHeightWhenTransition adjustments scene
 
         AnimationFrame ->
             case adjustments of
@@ -143,7 +143,7 @@ calculateHeightToLow lapsedTime duration_ scene timing strat currentHeight adjus
                     currentHeight
 
                 _ ->
-                    heightToLowWhenAnimationFrame
+                    minHeightWhenAnimationFrame
                         lapsedTime
                         duration_
                         timing
@@ -151,8 +151,8 @@ calculateHeightToLow lapsedTime duration_ scene timing strat currentHeight adjus
                         adjustments
 
 
-heightToLowWhenTransition : Maybe Adjustment -> SceneHeight -> CalculatedHeight
-heightToLowWhenTransition adjustment sceneHeight =
+minHeightWhenTransition : Maybe Adjustment -> SceneHeight -> CalculatedHeight
+minHeightWhenTransition adjustment sceneHeight =
     case adjustment of
         Just (Recalc _) ->
             Pixel sceneHeight
@@ -167,8 +167,8 @@ heightToLowWhenTransition adjustment sceneHeight =
             Pixel 0
 
 
-heightToHighWhenTransition : CalculatedHeight -> SceneHeight -> CalculatedHeight
-heightToHighWhenTransition currentHeight sceneHeight =
+heightToContentHeightWhenTransition : CalculatedHeight -> SceneHeight -> CalculatedHeight
+heightToContentHeightWhenTransition currentHeight sceneHeight =
     case currentHeight of
         Pixel _ ->
             Pixel sceneHeight
@@ -177,8 +177,8 @@ heightToHighWhenTransition currentHeight sceneHeight =
             Auto
 
 
-calculatedHeightWhenHigh : SceneHeight -> Bool -> CalculatedHeight
-calculatedHeightWhenHigh sceneHeight snap =
+calculatedHeightWhenAtContentHeight : SceneHeight -> Bool -> CalculatedHeight
+calculatedHeightWhenAtContentHeight sceneHeight snap =
     if snap then
         Auto
 
@@ -186,11 +186,11 @@ calculatedHeightWhenHigh sceneHeight snap =
         Pixel sceneHeight
 
 
-calculateHeightToHigh : Int -> Duration -> SceneHeight -> TimingFunction -> AnimationStrategy -> CalculatedHeight -> Maybe Adjustment -> CalculatedHeight
-calculateHeightToHigh lapsedTime duration_ sceneHeight timing strat currentHeight adjustment =
+calculateHeightToContentHeight : Int -> Duration -> SceneHeight -> TimingFunction -> AnimationStrategy -> CalculatedHeight -> Maybe Adjustment -> CalculatedHeight
+calculateHeightToContentHeight lapsedTime duration_ sceneHeight timing strat currentHeight adjustment =
     case strat of
         Transition ->
-            heightToHighWhenTransition currentHeight sceneHeight
+            heightToContentHeightWhenTransition currentHeight sceneHeight
 
         AnimationFrame ->
             case adjustment of
@@ -198,7 +198,7 @@ calculateHeightToHigh lapsedTime duration_ sceneHeight timing strat currentHeigh
                     currentHeight
 
                 _ ->
-                    heightToHighWhenAnimationFrame
+                    heightToContentHeightWhenAnimationFrame
                         lapsedTime
                         duration_
                         timing
@@ -244,7 +244,7 @@ durationToMillis duration_ =
             f
 
 
-heightToHighWhenAnimationFrame :
+heightToContentHeightWhenAnimationFrame :
     Int
     -> Duration
     -> TimingFunction
@@ -252,7 +252,7 @@ heightToHighWhenAnimationFrame :
     -> CalculatedHeight
     -> Maybe Adjustment
     -> CalculatedHeight
-heightToHighWhenAnimationFrame timeLapsed duration_ timing sceneHeight currentHeight adjustment =
+heightToContentHeightWhenAnimationFrame timeLapsed duration_ timing sceneHeight currentHeight adjustment =
     let
         ratio =
             heightRatio timeLapsed duration_ timing
@@ -317,14 +317,14 @@ timingToCubicBezierXY timing =
             bezier
 
 
-heightToLowWhenAnimationFrame :
+minHeightWhenAnimationFrame :
     Int
     -> Duration
     -> TimingFunction
     -> SceneHeight
     -> Maybe Adjustment
     -> CalculatedHeight
-heightToLowWhenAnimationFrame timeLapsed duration_ timing sceneHeight adjustment =
+minHeightWhenAnimationFrame timeLapsed duration_ timing sceneHeight adjustment =
     let
         ratio =
             heightRatio timeLapsed duration_ timing
@@ -346,8 +346,8 @@ heightToLowWhenAnimationFrame timeLapsed duration_ timing sceneHeight adjustment
     calculatedHeight
 
 
-interruptDataToLow : Time.Posix -> Int -> Float -> CalculatedHeight -> SceneHeight -> Duration -> AnimationStrategy -> InterruptData
-interruptDataToLow now dt targetHeight calculatedHeight sceneHeight duration_ animationStrategy =
+interruptDataToMinHeight : Time.Posix -> Int -> Float -> CalculatedHeight -> SceneHeight -> Duration -> AnimationStrategy -> InterruptData
+interruptDataToMinHeight now dt targetHeight calculatedHeight sceneHeight duration_ animationStrategy =
     case animationStrategy of
         AnimationFrame ->
             case calculatedHeight of
@@ -369,8 +369,8 @@ interruptDataToLow now dt targetHeight calculatedHeight sceneHeight duration_ an
             transitionInterruptData now dt targetHeight
 
 
-interruptDataToHigh : Time.Posix -> Int -> CalculatedHeight -> SceneHeight -> Duration -> AnimationStrategy -> InterruptData
-interruptDataToHigh now dt calculatedHeight sceneHeight duration_ animationStrategy =
+interruptDataToContentHeight : Time.Posix -> Int -> CalculatedHeight -> SceneHeight -> Duration -> AnimationStrategy -> InterruptData
+interruptDataToContentHeight now dt calculatedHeight sceneHeight duration_ animationStrategy =
     case animationStrategy of
         AnimationFrame ->
             case calculatedHeight of
@@ -419,10 +419,10 @@ internalSubs state_ =
             query QueryViewportForRecalc
 
         QueryForContent QueryViewport ->
-            query QueryViewportForHigh
+            query QueryViewportForContentHeight
 
         AnimateToContent _ ->
-            animate ToHigh
+            animate ToContentHeight
 
         ToContent ->
             case ( state_.snapToContent, state_.warmUpScene ) of
@@ -430,16 +430,16 @@ internalSubs state_ =
                     Sub.none
 
                 ( _, True ) ->
-                    query QueryViewportForHigh
+                    query QueryViewportForContentHeight
 
                 _ ->
                     Sub.none
 
         QueryForMin QueryViewport ->
-            animate QueryViewportForLow
+            animate QueryViewportForMinHeight
 
         AnimateToMin _ ->
-            animate ToLow
+            animate ToMinHeight
 
         _ ->
             Sub.none
@@ -475,14 +475,14 @@ updateAnimateHeight msg state_ =
         ViewportForRecalc (Err _) ->
             ( state_, Cmd.none )
 
-        QueryViewportForHigh _ ->
+        QueryViewportForContentHeight _ ->
             ( { state_
                 | step = QueryForContent QueryResolving
               }
-            , Task.attempt ViewportForHigh <| BrowserDom.getViewportOf (containerIdToString state_.containerId)
+            , Task.attempt ViewportForContentHeight <| BrowserDom.getViewportOf (containerIdToString state_.containerId)
             )
 
-        ViewportForHigh (Ok viewPort) ->
+        ViewportForContentHeight (Ok viewPort) ->
             let
                 ( step, ch ) =
                     if state_.warmUpScene && state_.snapToContent then
@@ -507,7 +507,7 @@ updateAnimateHeight msg state_ =
 
         -- We didn't find a node to so we don't have any height info.
         -- lets snap high so the content can be seen.
-        ViewportForHigh (Err _) ->
+        ViewportForContentHeight (Err _) ->
             ( { state_
                 | step = ToContent
                 , calculatedHeight = Auto
@@ -516,10 +516,10 @@ updateAnimateHeight msg state_ =
             , Cmd.none
             )
 
-        QueryViewportForLow _ ->
-            ( { state_ | step = QueryForMin QueryResolving }, Task.attempt ViewportForLow <| BrowserDom.getViewportOf (containerIdToString state_.containerId) )
+        QueryViewportForMinHeight _ ->
+            ( { state_ | step = QueryForMin QueryResolving }, Task.attempt ViewportForMinHeight <| BrowserDom.getViewportOf (containerIdToString state_.containerId) )
 
-        ViewportForLow (Ok viewPort) ->
+        ViewportForMinHeight (Ok viewPort) ->
             -- We want to set the calculated height from auto to a pixel value here without animating.
             -- The transition style will not automatically animate from auto to a pixel.
             ( { state_
@@ -529,7 +529,7 @@ updateAnimateHeight msg state_ =
             , Cmd.none
             )
 
-        ViewportForLow (Err _) ->
+        ViewportForMinHeight (Err _) ->
             ( { state_
                 | step = ToMin
                 , calculatedHeight = Pixel 0
@@ -537,7 +537,7 @@ updateAnimateHeight msg state_ =
             , Cmd.none
             )
 
-        ToHigh now ->
+        ToContentHeight now ->
             case state_.step of
                 AnimateToContent scene ->
                     case state_.startTime of
@@ -546,8 +546,8 @@ updateAnimateHeight msg state_ =
                                 ( deltaTime, duration_ ) =
                                     deltaAndDuration state_.adjustment now start state_.duration
 
-                                heightToLow =
-                                    calculateHeightToLow
+                                minHeight =
+                                    calculateMinHeight
                                         deltaTime
                                         duration_
                                         scene
@@ -560,13 +560,13 @@ updateAnimateHeight msg state_ =
                                 Just (Interrupt Triggered) ->
                                     let
                                         newAdjustment =
-                                            Just <| Interrupt (Resolved <| interruptDataToLow now deltaTime 0 heightToLow scene duration_ state_.animationStrategy)
+                                            Just <| Interrupt (Resolved <| interruptDataToMinHeight now deltaTime 0 minHeight scene duration_ state_.animationStrategy)
                                     in
                                     ( { state_
                                         | step =
                                             AnimateToMin scene
                                         , calculatedHeight =
-                                            heightToLow
+                                            minHeight
                                         , adjustment = newAdjustment
                                         , startTime = Just now
                                       }
@@ -576,7 +576,7 @@ updateAnimateHeight msg state_ =
                                 Just (Recalc Triggered) ->
                                     ( { state_
                                         | calculatedHeight = state_.calculatedHeight
-                                        , adjustment = Just <| Interrupt (Resolved <| interruptDataToHigh now deltaTime state_.calculatedHeight scene state_.duration state_.animationStrategy)
+                                        , adjustment = Just <| Interrupt (Resolved <| interruptDataToContentHeight now deltaTime state_.calculatedHeight scene state_.duration state_.animationStrategy)
                                         , startTime = Just now
                                       }
                                     , Cmd.none
@@ -585,7 +585,7 @@ updateAnimateHeight msg state_ =
                                 _ ->
                                     if deltaTime < round (durationToMillis duration_) then
                                         ( { state_
-                                            | calculatedHeight = calculateHeightToHigh deltaTime duration_ scene state_.timing state_.animationStrategy state_.calculatedHeight state_.adjustment
+                                            | calculatedHeight = calculateHeightToContentHeight deltaTime duration_ scene state_.timing state_.animationStrategy state_.calculatedHeight state_.adjustment
                                           }
                                         , Cmd.none
                                         )
@@ -595,7 +595,7 @@ updateAnimateHeight msg state_ =
                                             | step = ToContent
                                             , startTime = Nothing
                                             , adjustment = Nothing
-                                            , calculatedHeight = calculatedHeightWhenHigh scene state_.snapToContent
+                                            , calculatedHeight = calculatedHeightWhenAtContentHeight scene state_.snapToContent
                                           }
                                         , Cmd.none
                                         )
@@ -604,7 +604,7 @@ updateAnimateHeight msg state_ =
                             ( { state_
                                 | startTime = Just now
                                 , calculatedHeight =
-                                    calculateHeightToHigh
+                                    calculateHeightToContentHeight
                                         0
                                         state_.duration
                                         scene
@@ -619,7 +619,7 @@ updateAnimateHeight msg state_ =
                 _ ->
                     ( state_, Cmd.none )
 
-        ToLow now ->
+        ToMinHeight now ->
             case state_.step of
                 AnimateToMin sceneHeight ->
                     case state_.startTime of
@@ -628,8 +628,8 @@ updateAnimateHeight msg state_ =
                                 ( deltaTime, duration_ ) =
                                     deltaAndDuration state_.adjustment now start state_.duration
 
-                                calculatedHeightToLow =
-                                    calculateHeightToLow
+                                calculatedMinHeight =
+                                    calculateMinHeight
                                         deltaTime
                                         duration_
                                         sceneHeight
@@ -639,15 +639,15 @@ updateAnimateHeight msg state_ =
                                         state_.adjustment
 
                                 isLowest =
-                                    case calculatedHeightToLow of
+                                    case calculatedMinHeight of
                                         Pixel ch ->
                                             ch == 0
 
                                         _ ->
                                             False
 
-                                heightToHigh =
-                                    calculateHeightToHigh
+                                heightToContentHeight =
+                                    calculateHeightToContentHeight
                                         deltaTime
                                         duration_
                                         sceneHeight
@@ -660,11 +660,11 @@ updateAnimateHeight msg state_ =
                                 Just (Interrupt Triggered) ->
                                     let
                                         adjustment =
-                                            Just <| Interrupt (Resolved <| interruptDataToHigh now deltaTime heightToHigh sceneHeight duration_ state_.animationStrategy)
+                                            Just <| Interrupt (Resolved <| interruptDataToContentHeight now deltaTime heightToContentHeight sceneHeight duration_ state_.animationStrategy)
                                     in
                                     ( { state_
                                         | step = AnimateToContent sceneHeight
-                                        , calculatedHeight = heightToHigh
+                                        , calculatedHeight = heightToContentHeight
                                         , adjustment = adjustment
                                         , startTime = Just now
                                       }
@@ -674,7 +674,7 @@ updateAnimateHeight msg state_ =
                                 Just (Recalc Triggered) ->
                                     ( { state_
                                         | calculatedHeight = state_.calculatedHeight
-                                        , adjustment = Just <| Interrupt (Resolved <| interruptDataToLow now deltaTime sceneHeight state_.calculatedHeight sceneHeight duration_ state_.animationStrategy)
+                                        , adjustment = Just <| Interrupt (Resolved <| interruptDataToMinHeight now deltaTime sceneHeight state_.calculatedHeight sceneHeight duration_ state_.animationStrategy)
                                         , startTime = Just now
                                       }
                                     , Cmd.none
@@ -691,7 +691,7 @@ updateAnimateHeight msg state_ =
                                     in
                                     if deltaTime < round (durationToMillis duration_) then
                                         ( { state_
-                                            | calculatedHeight = calculatedHeightToLow
+                                            | calculatedHeight = calculatedMinHeight
                                           }
                                         , Cmd.none
                                         )
@@ -702,7 +702,7 @@ updateAnimateHeight msg state_ =
                                             , adjustment = Nothing
                                             , startTime = Nothing
                                             , calculatedHeight =
-                                                calculatedHeightToLow
+                                                calculatedMinHeight
                                           }
                                         , Cmd.none
                                         )
@@ -711,7 +711,7 @@ updateAnimateHeight msg state_ =
                             ( { state_
                                 | startTime = Just now
                                 , calculatedHeight =
-                                    calculateHeightToLow
+                                    calculateMinHeight
                                         0
                                         state_.duration
                                         sceneHeight
