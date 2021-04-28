@@ -257,12 +257,12 @@ setTransitions state_ =
 -- STATE MODIFIERS
 
 
-{-| By default the `container` height will be given a fixed value when it is high. In this scenario, content that is
+{-| By default the `container` height will be given a fixed value when it is at content hight. In this scenario, content that is
 added/removed will not adjust the containers height. See `snapToContent` for another option.
 
 When your view content changes you can recalculate the container height.
 
-This function makes the most sense to use when the container is already in a high position.
+This function makes the most sense to use when the container is already at content hight.
 
     update : msg -> model -> ( model, Cmd msg )
     update msg model =
@@ -313,7 +313,7 @@ recalculate ((State state_) as s) =
 {-| The `container` will snap to a height subsequent to its changing content.
 
 All that is happening internally is that the height value of the container is being set
-to auto when the `container` is high.
+to auto when the `container` is at its content height.
 
         init =
             initialState (uniqueContainerId "id")
@@ -405,9 +405,9 @@ toMinHeight (State state_) =
             State { state_ | step = QueryForMin QueryViewport }
 
 
-{-| Determine if a container is high.
+{-| Determine if a container is at its content height.
 
-Useful for when you need to toggle a `container` high and low.
+Useful for when you need to toggle a `container` to its content height or its min height.
 
         update msg =
             case msg of
