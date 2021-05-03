@@ -54,13 +54,13 @@ recalcData =
 internal : Test
 internal =
     describe "internal tests"
-        [ describe "isHigh"
+        [ describe "isContentHeight"
             [ test "returns true when step is High" <|
                 \() ->
-                    Expect.true "Step must be High to be true" (isContentHeight (initialState (uniqueContainerId "123") |> setAtContentHeight))
+                    Expect.true "Step must be at content height to be true" (isContentHeight (initialState (uniqueContainerId "123") |> setAtContentHeight))
             , test "is not true when step is Low" <|
                 \() ->
-                    Expect.false "Step must be High to be true" (isContentHeight (initialState (uniqueContainerId "123")))
+                    Expect.false "Step must be at content height to be true" (isContentHeight (initialState (uniqueContainerId "123")))
             ]
         , describe "deltaAndDuration"
             [ describe "with no interrupt"
@@ -83,7 +83,7 @@ internal =
                         Expect.equal ( 100, duration ) (deltaAndDuration (Just <| Recalc Triggered) now start duration)
                 ]
             ]
-        , describe "calculatedHeightWhenHigh"
+        , describe "calculatedHeightWhenAtContentHeight"
             [ describe "when snapToContent is True"
                 [ test "should set the calculated height to Auto" <|
                     \() -> Expect.equal (calculatedHeightWhenAtContentHeight sceneHeight True) Auto
@@ -93,7 +93,7 @@ internal =
                     \() -> Expect.equal (calculatedHeightWhenAtContentHeight sceneHeight False) (Pixel sceneHeight)
                 ]
             ]
-        , describe "heightToLowWhenAnimationFrame"
+        , describe "minHeightWhenAnimationFrame"
             [ test "returns 0 pixel CalculatedHeight " <|
                 \() ->
                     Expect.equal (Pixel 150) (minHeightWhenAnimationFrame 150 Fast Linear sceneHeight Nothing)
@@ -108,7 +108,7 @@ internal =
                     ]
                 ]
             ]
-        , describe "heightToHighWhenAF"
+        , describe "heightToContentHeightWhenAnimationFrame"
             [ describe "when current height is Auto"
                 [ test "does not change calculated height " <|
                     let
@@ -139,7 +139,7 @@ internal =
                     ]
                 ]
             ]
-        , describe "interruptDataToLow"
+        , describe "interruptDataToMinHeight"
             [ describe "when strategy is AnimationFrame"
                 [ describe "when the step is Interrupt Triggered"
                     [ describe "when the target height and the scene height are both 0"
