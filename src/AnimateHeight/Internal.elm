@@ -1,4 +1,4 @@
-module AnimateHeight.Internal exposing (TargetHeight(..), Transition(..), TransitionMsg(..))
+module AnimateHeight.Internal exposing (TargetHeight(..), Transition(..))
 
 
 type TargetHeight
@@ -7,12 +7,8 @@ type TargetHeight
 
 
 type Transition
-    = Prepare
-    | Transition TransitionMsg
-
-
-type TransitionMsg
     = Open
+    | PrepareOpening
     | Opening
     | Closing
     | Closed

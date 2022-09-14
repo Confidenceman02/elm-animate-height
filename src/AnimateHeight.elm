@@ -1,5 +1,6 @@
 module AnimateHeight exposing
-    ( Msg
+    ( Action(..)
+    , Msg
     , State
     , close
     , content
@@ -26,7 +27,7 @@ type Msg
     = AnimationStart
     | AnimationEnd
     | GotContainerViewport (Result Dom.Error Dom.Viewport)
-    | Open
+    | OpenMsg
     | Close
 
 
@@ -54,6 +55,13 @@ type alias StateConfig =
 
 type Identifier
     = Identifier String
+
+
+type Action
+    = Open
+    | Opening
+    | Closed
+    | Closing
 
 
 identifier : String -> Identifier
@@ -100,7 +108,7 @@ state st (Config config) =
 init : Identifier -> State
 init i =
     State_
-        { transition = Internal.Transition Internal.Closed
+        { transition = Internal.Closed
         , id = i
         , targetHeight = Internal.Fixed 0
         }
@@ -108,7 +116,7 @@ init i =
 
 open : Msg
 open =
-    Open
+    OpenMsg
 
 
 close : Msg
@@ -116,41 +124,63 @@ close =
     Close
 
 
-update : Msg -> State -> ( State, Cmd Msg )
+update : Msg -> State -> ( Maybe Action, State, Cmd Msg )
 update msg ((State_ state_) as st) =
     let
         (Identifier idString) =
             state_.id
     in
     case msg of
-        Open ->
+        OpenMsg ->
             let
                 queryDomCmd =
                     Task.attempt GotContainerViewport <| Dom.getViewportOf idString
             in
-            ( State_ { state_ | transition = Internal.Prepare }, queryDomCmd )
+            ( Nothing, State_ { state_ | transition = Internal.PrepareOpening }, queryDomCmd )
 
         Close ->
-            ( st, Cmd.none )
+            ( Just Closing
+            , State_
+                { state_
+                    | targetHeight = Internal.Fixed 0
+                    , transition = Internal.Closing
+                }
+            , Cmd.none
+            )
 
         GotContainerViewport (Ok vp) ->
-            ( State_
+            ( Nothing
+            , State_
                 { state_
-                    | transition =
-                        Internal.Transition Internal.Opening
-                    , targetHeight = Internal.Fixed vp.scene.height
+                    | targetHeight = Internal.Fixed vp.scene.height
                 }
             , Cmd.none
             )
 
         GotContainerViewport (Err _) ->
-            ( st, Cmd.none )
+            ( Nothing, st, Cmd.none )
 
         AnimationStart ->
-            ( st, Cmd.none )
+            case state_.transition of
+                Internal.PrepareOpening ->
+                    ( Just Opening, State_ { state_ | transition = Internal.Opening }, Cmd.none )
+
+                Internal.Open ->
+                    ( Just Closing, State_ { state_ | transition = Internal.Opening }, Cmd.none )
+
+                _ ->
+                    ( Nothing, st, Cmd.none )
 
         AnimationEnd ->
-            ( st, Cmd.none )
+            case state_.transition of
+                Internal.Closing ->
+                    ( Just Closed, State_ { state_ | transition = Internal.Closed }, Cmd.none )
+
+                Internal.Opening ->
+                    ( Just Open, State_ { state_ | transition = Internal.Open }, Cmd.none )
+
+                _ ->
+                    ( Nothing, st, Cmd.none )
 
 
 view : Config msg -> Html msg
@@ -190,7 +220,7 @@ view (Config config) =
             ++ resolveTransitionMsgs
         )
         (case state_.transition of
-            Internal.Transition Internal.Closed ->
+            Internal.Closed ->
                 []
 
             _ ->
