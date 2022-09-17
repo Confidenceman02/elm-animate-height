@@ -134,23 +134,31 @@ update msg ((State_ state_) as st) =
                 queryDomCmd =
                     Task.attempt GotContainerViewport <| Dom.getViewportOf idString
             in
-            ( Nothing
-            , State_
-                { state_
-                    | transition =
-                        Tuple.mapSecond (\_ -> Internal.PrepareOpening) state_.transition
-                }
-            , queryDomCmd
-            )
+            if Internal.canOpen (Tuple.second state_.transition) then
+                ( Nothing
+                , State_
+                    { state_
+                        | transition =
+                            Tuple.mapSecond (\_ -> Internal.PrepareOpening) state_.transition
+                    }
+                , queryDomCmd
+                )
+
+            else
+                ( Nothing, st, Cmd.none )
 
         Close ->
-            ( Just Closing
-            , State_
-                { state_
-                    | transition = ( Internal.Fixed 0, Internal.Closing )
-                }
-            , Cmd.none
-            )
+            if Internal.canClose (Tuple.second state_.transition) then
+                ( Just Closing
+                , State_
+                    { state_
+                        | transition = ( Internal.Fixed 0, Internal.Closing )
+                    }
+                , Cmd.none
+                )
+
+            else
+                ( Nothing, st, Cmd.none )
 
         GotContainerViewport (Ok vp) ->
             ( Nothing
