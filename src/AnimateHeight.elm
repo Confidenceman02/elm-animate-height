@@ -112,14 +112,22 @@ init i =
         }
 
 
-open : Msg
-open =
-    OpenMsg
+open : State -> ( State, Cmd Msg )
+open st =
+    let
+        ( _, s, c ) =
+            update OpenMsg st
+    in
+    ( s, c )
 
 
-close : Msg
-close =
-    Close
+close : State -> ( State, Cmd Msg )
+close st =
+    let
+        ( _, s, c ) =
+            update Close st
+    in
+    ( s, c )
 
 
 update : Msg -> State -> ( Maybe Action, State, Cmd Msg )
@@ -149,7 +157,7 @@ update msg ((State_ state_) as st) =
 
         Close ->
             if Internal.canClose (Tuple.second state_.transition) then
-                ( Just Closing
+                ( Nothing
                 , State_
                     { state_
                         | transition = ( Internal.Fixed 0, Internal.Closing )

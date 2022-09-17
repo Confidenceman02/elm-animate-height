@@ -10,6 +10,7 @@ import Html.Events exposing (onClick)
 type Msg
     = AnimateHeight AnimateHeight.Msg
     | Toggle
+    | Add
 
 
 type ContainerState
@@ -39,8 +40,8 @@ view : Model -> Html Msg
 view ( state, content, cntSt ) =
     div []
         [ div [ style "border" "solid" ]
-            [ label [] [ text "Auto" ]
-            , button [ onClick Toggle ] [ text "Toggle" ]
+            [ button [ onClick Toggle ] [ text "Toggle" ]
+            , button [ onClick Add ] [ text "Add" ]
             , AnimateHeight.view
                 (AnimateHeight.make
                     |> AnimateHeight.content [ span [] content ]
@@ -52,42 +53,29 @@ view ( state, content, cntSt ) =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ( state, content, cntSt ) =
+update msg ( state, content, trans ) =
     case msg of
         Toggle ->
-            case cntSt of
+            case trans of
                 AnimateHeight.Closed ->
                     let
-                        ( action, newCntSt, cmds ) =
-                            AnimateHeight.update AnimateHeight.open state
-
-                        newAction =
-                            case action of
-                                Just act ->
-                                    act
-
-                                _ ->
-                                    cntSt
+                        ( newCntSt, cmds ) =
+                            AnimateHeight.open state
                     in
-                    ( ( newCntSt, content, newAction ), Cmd.map AnimateHeight cmds )
+                    ( ( newCntSt, content, trans ), Cmd.map AnimateHeight cmds )
 
                 AnimateHeight.Open ->
                     let
-                        ( action, newCntSt, cmds ) =
-                            AnimateHeight.update AnimateHeight.close state
-
-                        newAction =
-                            case action of
-                                Just act ->
-                                    act
-
-                                _ ->
-                                    cntSt
+                        ( newCntSt, cmds ) =
+                            AnimateHeight.close state
                     in
-                    ( ( newCntSt, content, newAction ), Cmd.map AnimateHeight cmds )
+                    ( ( newCntSt, content, trans ), Cmd.map AnimateHeight cmds )
 
                 _ ->
-                    ( ( state, content, cntSt ), Cmd.none )
+                    ( ( state, content, trans ), Cmd.none )
+
+        Add ->
+            ( ( state, content ++ [ text loremIpsum ], trans ), Cmd.none )
 
         AnimateHeight animMsg ->
             let
@@ -100,7 +88,7 @@ update msg ( state, content, cntSt ) =
                             action
 
                         _ ->
-                            cntSt
+                            trans
             in
             ( ( animState, content, newContainerSt ), Cmd.map AnimateHeight animCmd )
 
