@@ -47,9 +47,8 @@ type alias Configuration msg =
 
 
 type alias StateConfig =
-    { transition : Internal.Transition
+    { transition : ( Internal.TargetHeight, Internal.Transition )
     , id : Identifier
-    , targetHeight : Internal.TargetHeight
     }
 
 
@@ -108,9 +107,8 @@ state st (Config config) =
 init : Identifier -> State
 init i =
     State_
-        { transition = Internal.Closed
+        { transition = ( Internal.Fixed 0, Internal.Closed )
         , id = i
-        , targetHeight = Internal.Fixed 0
         }
 
 
@@ -136,14 +134,20 @@ update msg ((State_ state_) as st) =
                 queryDomCmd =
                     Task.attempt GotContainerViewport <| Dom.getViewportOf idString
             in
-            ( Nothing, State_ { state_ | transition = Internal.PrepareOpening }, queryDomCmd )
+            ( Nothing
+            , State_
+                { state_
+                    | transition =
+                        Tuple.mapSecond (\_ -> Internal.PrepareOpening) state_.transition
+                }
+            , queryDomCmd
+            )
 
         Close ->
             ( Just Closing
             , State_
                 { state_
-                    | targetHeight = Internal.Fixed 0
-                    , transition = Internal.Closing
+                    | transition = ( Internal.Fixed 0, Internal.Closing )
                 }
             , Cmd.none
             )
@@ -152,7 +156,7 @@ update msg ((State_ state_) as st) =
             ( Nothing
             , State_
                 { state_
-                    | targetHeight = Internal.Fixed vp.scene.height
+                    | transition = ( Internal.Fixed vp.scene.height, Internal.Opening )
                 }
             , Cmd.none
             )
@@ -162,22 +166,40 @@ update msg ((State_ state_) as st) =
 
         AnimationStart ->
             case state_.transition of
-                Internal.PrepareOpening ->
-                    ( Just Opening, State_ { state_ | transition = Internal.Opening }, Cmd.none )
+                ( _, Internal.Opening ) ->
+                    ( Just Opening, st, Cmd.none )
 
-                Internal.Open ->
-                    ( Just Closing, State_ { state_ | transition = Internal.Opening }, Cmd.none )
+                ( _, Internal.Closing ) ->
+                    ( Just Closing, st, Cmd.none )
 
                 _ ->
                     ( Nothing, st, Cmd.none )
 
         AnimationEnd ->
             case state_.transition of
-                Internal.Closing ->
-                    ( Just Closed, State_ { state_ | transition = Internal.Closed }, Cmd.none )
+                ( _, Internal.Closing ) ->
+                    ( Just Closed
+                    , State_
+                        { state_
+                            | transition =
+                                Tuple.mapSecond
+                                    (\_ -> Internal.Closed)
+                                    state_.transition
+                        }
+                    , Cmd.none
+                    )
 
-                Internal.Opening ->
-                    ( Just Open, State_ { state_ | transition = Internal.Open }, Cmd.none )
+                ( _, Internal.Opening ) ->
+                    ( Just Open
+                    , State_
+                        { state_
+                            | transition =
+                                Tuple.mapSecond
+                                    (\_ -> Internal.Open)
+                                    state_.transition
+                        }
+                    , Cmd.none
+                    )
 
                 _ ->
                     ( Nothing, st, Cmd.none )
@@ -193,11 +215,11 @@ view (Config config) =
             config.state
 
         resolveHeight =
-            case state_.targetHeight of
-                Internal.Fixed h ->
+            case state_.transition of
+                ( Internal.Fixed h, _ ) ->
                     String.fromFloat h ++ "px"
 
-                Internal.Auto ->
+                ( Internal.Auto, _ ) ->
                     "auto"
 
         resolveTransitionMsgs =
@@ -220,7 +242,7 @@ view (Config config) =
             ++ resolveTransitionMsgs
         )
         (case state_.transition of
-            Internal.Closed ->
+            ( _, Internal.Closed ) ->
                 []
 
             _ ->
