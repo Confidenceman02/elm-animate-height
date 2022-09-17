@@ -19,7 +19,7 @@ type ContainerState
 
 
 type alias Model =
-    ( AnimateHeight.State, List (Html Msg), AnimateHeight.Action )
+    ( AnimateHeight.State, List (Html Msg), ContainerState )
 
 
 loremIpsum : String
@@ -37,12 +37,12 @@ loremIpsum =
 
 
 view : Model -> Html Msg
-view ( state, content, cntSt ) =
+view ( state, content, cntState ) =
     div []
         [ div [ style "border" "solid" ]
             [ button [ onClick Toggle ] [ text "Toggle" ]
             , button [ onClick Add ] [ text "Add" ]
-            , AnimateHeight.view
+            , AnimateHeight.container
                 (AnimateHeight.make
                     |> AnimateHeight.content [ span [] content ]
                     |> AnimateHeight.state state
@@ -53,51 +53,48 @@ view ( state, content, cntSt ) =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ( state, content, trans ) =
+update msg ( state, content, cntState ) =
     case msg of
         Toggle ->
-            case trans of
-                AnimateHeight.Closed ->
-                    let
-                        ( newCntSt, cmds ) =
-                            AnimateHeight.open state
-                    in
-                    ( ( newCntSt, content, trans ), Cmd.map AnimateHeight cmds )
+            let
+                ( newCntSt, cmds ) =
+                    case cntState of
+                        Open ->
+                            AnimateHeight.height (AnimateHeight.fixed 0) state
 
-                AnimateHeight.Open ->
-                    let
-                        ( newCntSt, cmds ) =
-                            AnimateHeight.close state
-                    in
-                    ( ( newCntSt, content, trans ), Cmd.map AnimateHeight cmds )
-
-                _ ->
-                    ( ( state, content, trans ), Cmd.none )
+                        Closed ->
+                            AnimateHeight.height AnimateHeight.auto state
+            in
+            ( ( newCntSt, content, cntState ), Cmd.map AnimateHeight cmds )
 
         Add ->
-            ( ( state, content ++ [ text loremIpsum ], trans ), Cmd.none )
+            ( ( state, content ++ [ text loremIpsum ], cntState ), Cmd.none )
 
         AnimateHeight animMsg ->
             let
-                ( maybeAction, animState, animCmd ) =
+                ( maybeTransition, animState, animCmd ) =
                     AnimateHeight.update animMsg state
 
-                newContainerSt =
-                    case maybeAction of
-                        Just action ->
-                            action
+                resolveContainerState =
+                    case maybeTransition of
+                        Just (AnimateHeight.TransitionEnd arrivedAtHeight) ->
+                            if arrivedAtHeight <= 0 then
+                                Closed
+
+                            else
+                                Open
 
                         _ ->
-                            trans
+                            cntState
             in
-            ( ( animState, content, newContainerSt ), Cmd.map AnimateHeight animCmd )
+            ( ( animState, content, resolveContainerState ), Cmd.map AnimateHeight animCmd )
 
 
 init : ( Model, Cmd Msg )
 init =
     ( ( AnimateHeight.init (AnimateHeight.identifier "paragraph")
       , [ text loremIpsum ]
-      , AnimateHeight.Closed
+      , Closed
       )
     , Cmd.none
     )
