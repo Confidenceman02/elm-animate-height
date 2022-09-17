@@ -32,9 +32,10 @@ module AnimateHeight exposing
 import AnimateHeight.Internal as Internal
 import Browser.Dom as Dom
 import Html exposing (Html, div)
-import Html.Attributes exposing (id, style)
+import Html.Attributes exposing (attribute, id, style)
 import Html.Events as Events
 import Json.Decode as Decode
+import Json.Encode as Encode
 import Task
 
 
@@ -80,7 +81,17 @@ type Identifier
     = Identifier String
 
 
-{-| -}
+{-| Transitions that are dispatched in sync with the transition lifecycle.
+
+TransitionStart - Dispatched when an animation starts.
+TransitionEnd - Dispatched when an animation ends.
+
+The Float value is the target pixel height at which the animation will end.
+
+e.g. TransitionStart 200 -> The animation has started and will end at 200px
+e.g. TransitionEnd 200 -> The animation has ended at the height of 200px
+
+-}
 type Transition
     = TransitionStart Float
     | TransitionEnd Float
@@ -113,6 +124,11 @@ make =
 -- CONFIG MODIFIERS
 
 
+{-| If set to true content will fade-in (and fade-out) while height is animated.
+
+        view (make |> animateOpacity True)
+
+-}
 animateOpacity : Bool -> Config msg -> Config msg
 animateOpacity pred (Config config) =
     Config { config | animateOpacity = pred }
@@ -120,10 +136,7 @@ animateOpacity pred (Config config) =
 
 {-| This is like not having an animation at all. Duration maps to 0
 
-        AnimateHeight.view
-          (AnimateHeight.make
-              |> AnimateHeight.instant
-          )
+        view (make |> instant)
 
 -}
 instant : Config msg -> Config msg
@@ -133,10 +146,7 @@ instant (Config config) =
 
 {-| Animation duration of 200ms
 
-        AnimateHeight.view
-          (AnimateHeight.make
-              |> AnimateHeight.immediate
-          )
+        view (make |> immediate)
 
 -}
 immediate : Config msg -> Config msg
@@ -146,10 +156,7 @@ immediate (Config config) =
 
 {-| Animation duration of 250ms
 
-        AnimateHeight.view
-          (AnimateHeight.make
-              |> AnimateHeight.rapid
-          )
+        view (make |> rapid)
 
 -}
 rapid : Config msg -> Config msg
@@ -159,10 +166,7 @@ rapid (Config config) =
 
 {-| Animation duration of 300ms
 
-        AnimateHeight.view
-          (AnimateHeight.make
-              |> AnimateHeight.fast
-          )
+        view (make |> fast)
 
 -}
 fast : Config msg -> Config msg
@@ -175,10 +179,7 @@ Negative values will be converted to their positive equivalent.
 
 custom -333 => 333
 
-        AnimateHeight.view
-          (AnimateHeight.make
-              |> AnimateHeight.customTiming 333
-          )
+        view (make |> customTiming 333)
 
 -}
 customTiming : Float -> Config msg -> Config msg
@@ -351,6 +352,9 @@ Values translate to px values. e.g. 200 -> 200px
                    , Cmd.map AnimateHeightMsg cmds
                   )
 
+                AnimatHeightMsg animMsg ->
+                  --
+
 -}
 fixed : Float -> Internal.TargetHeight
 fixed =
@@ -470,7 +474,8 @@ container (Config config) =
                                 || (state_.progress == Internal.Idle)
                            )
                 then
-                    [ style "opacity" "0" ]
+                    [ style "opacity" "0"
+                    ]
 
                 else
                     [ style "opacity" "1" ]
@@ -491,6 +496,24 @@ container (Config config) =
 
                 _ ->
                     []
+
+        resolveAccessibilityValues =
+            if config.animateOpacity then
+                if
+                    state_.calculatedHeight
+                        <= 0
+                        && state_.progress
+                        == Internal.Idle
+                then
+                    [ attribute "aria-hidden" (Encode.encode 0 <| Encode.bool True)
+                    , style "display" "none"
+                    ]
+
+                else
+                    []
+
+            else
+                []
     in
     div
         ([ id id_
@@ -511,6 +534,7 @@ container (Config config) =
                 ++ resolveContentOpacity
                 ++ resolveContentOpacityPropagation
                 ++ resolveTransitionDuration
+                ++ resolveAccessibilityValues
             )
             config.content
         ]
