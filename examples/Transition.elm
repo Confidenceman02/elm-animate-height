@@ -1,6 +1,6 @@
 module Transition exposing (..)
 
-import AnimateHeight
+import AnimateHeight as AH
 import Browser
 import Html exposing (Html, button, div, label, span, text)
 import Html.Attributes exposing (style)
@@ -8,7 +8,7 @@ import Html.Events exposing (onClick)
 
 
 type Msg
-    = AnimateHeight AnimateHeight.Msg
+    = AnimateHeight AH.Msg
     | Toggle
     | Add
 
@@ -19,7 +19,7 @@ type ContainerState
 
 
 type alias Model =
-    ( AnimateHeight.State, List (Html Msg), ContainerState )
+    ( AH.State, List (Html Msg), ContainerState )
 
 
 loremIpsum : String
@@ -42,13 +42,13 @@ view ( state, content, cntState ) =
         [ div [ style "border" "solid" ]
             [ button [ onClick Toggle ] [ text "Toggle" ]
             , button [ onClick Add ] [ text "Add" ]
-            , AnimateHeight.container
-                (AnimateHeight.make
-                    |> AnimateHeight.content [ span [] content ]
-                    |> AnimateHeight.state state
-                    |> AnimateHeight.inject AnimateHeight
-                    |> AnimateHeight.animateOpacity True
-                    |> AnimateHeight.easeInOut
+            , AH.container
+                (AH.make
+                    |> AH.content [ span [] content ]
+                    |> AH.state state
+                    |> AH.inject AnimateHeight
+                    |> AH.animateOpacity True
+                    |> AH.easeInOut
                 )
             ]
         ]
@@ -62,10 +62,10 @@ update msg ( state, content, cntState ) =
                 ( newCntSt, cmds ) =
                     case cntState of
                         Open ->
-                            AnimateHeight.height (AnimateHeight.fixed 0) state
+                            AH.height (AH.fixed 0) state
 
                         Closed ->
-                            AnimateHeight.height AnimateHeight.auto state
+                            AH.height AH.auto state
             in
             ( ( newCntSt, content, cntState ), Cmd.map AnimateHeight cmds )
 
@@ -75,11 +75,11 @@ update msg ( state, content, cntState ) =
         AnimateHeight animMsg ->
             let
                 ( maybeTransition, animState, animCmd ) =
-                    AnimateHeight.update animMsg state
+                    AH.update animMsg state
 
                 resolveContainerState =
                     case maybeTransition of
-                        Just (AnimateHeight.TransitionEnd arrivedAtHeight) ->
+                        Just (AH.TransitionEnd arrivedAtHeight) ->
                             if arrivedAtHeight <= 0 then
                                 Closed
 
@@ -94,7 +94,7 @@ update msg ( state, content, cntState ) =
 
 init : ( Model, Cmd Msg )
 init =
-    ( ( AnimateHeight.init (AnimateHeight.identifier "paragraph")
+    ( ( AH.init (AH.identifier "paragraph")
       , [ text loremIpsum ]
       , Closed
       )
@@ -108,5 +108,5 @@ main =
         { init = always init
         , view = view
         , update = update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = \( st, _, _ ) -> Sub.map AnimateHeight (AH.subscriptions st)
         }

@@ -26,11 +26,13 @@ module AnimateHeight exposing
     , make
     , rapid
     , state
+    , subscriptions
     , update
     )
 
 import AnimateHeight.Internal as Internal
 import Browser.Dom as Dom
+import Browser.Events as DomEvents
 import Html exposing (Html, div)
 import Html.Attributes exposing (attribute, id, style)
 import Html.Events as Events
@@ -44,6 +46,7 @@ type Msg
     = AnimationStart
     | AnimationEnd
     | GotContainerViewport (Result Dom.Error Dom.Viewport)
+    | SetViewportHeightThenTrigger Float (Result Dom.Error Dom.Viewport)
     | HeightMsg
     | NoOp
 
@@ -58,6 +61,11 @@ type Config msg
     = Config (Configuration msg)
 
 
+type CalculatedHeight
+    = Auto
+    | Fixed Float
+
+
 type alias Configuration msg =
     { content : List (Html msg)
     , inject : Maybe (Msg -> msg)
@@ -70,9 +78,11 @@ type alias Configuration msg =
 
 type alias StateConfig =
     { targetHeight : Internal.TargetHeight
-    , calculatedHeight : Float
+    , calculatedHeight : CalculatedHeight
     , id : Identifier
     , progress : Internal.Progress
+    , queriedHeight : Float
+    , force : Bool
     }
 
 
@@ -300,9 +310,11 @@ init : Identifier -> State
 init i =
     State_
         { targetHeight = Internal.Fixed 0
-        , calculatedHeight = 0
+        , calculatedHeight = Fixed 0
         , id = i
         , progress = Internal.Idle
+        , queriedHeight = 0
+        , force = False
         }
 
 
@@ -361,6 +373,15 @@ fixed =
     Internal.Fixed
 
 
+subscriptions : State -> Sub Msg
+subscriptions (State_ state_) =
+    if state_.force then
+        DomEvents.onAnimationFrame (\_ -> HeightMsg)
+
+    else
+        Sub.none
+
+
 {-| -}
 update : Msg -> State -> ( Maybe Transition, State, Cmd Msg )
 update msg ((State_ state_) as st) =
@@ -372,22 +393,54 @@ update msg ((State_ state_) as st) =
         HeightMsg ->
             case state_.targetHeight of
                 Internal.Fixed h ->
-                    ( Nothing
-                    , State_ { state_ | calculatedHeight = h, progress = Internal.Running }
-                    , Cmd.none
-                    )
+                    case state_.calculatedHeight of
+                        Auto ->
+                            let
+                                queryDomCmd =
+                                    -- Setting pixel value from a height of auto will not trigger animation.
+                                    -- Instead we need to trigger an animation frame and set the height, then transition.
+                                    Task.attempt (SetViewportHeightThenTrigger h) <| Dom.getViewportOf idString
 
-                _ ->
+                                resolveProgress =
+                                    Internal.Running
+                            in
+                            ( Nothing
+                            , State_
+                                { state_
+                                    | progress = resolveProgress
+                                    , force = False
+                                }
+                            , queryDomCmd
+                            )
+
+                        Fixed _ ->
+                            ( Nothing
+                            , State_
+                                { state_
+                                    | calculatedHeight = Fixed h
+                                    , queriedHeight = h
+                                    , progress = Internal.Running
+                                    , force = False
+                                }
+                            , Cmd.none
+                            )
+
+                Internal.Auto ->
                     let
                         queryDomCmd =
                             Task.attempt GotContainerViewport <| Dom.getViewportOf idString
 
                         resolveProgress =
-                            if state_.calculatedHeight <= 0 then
-                                Internal.Preparing
+                            case state_.calculatedHeight of
+                                Fixed fh ->
+                                    if fh <= 0 then
+                                        Internal.Preparing
 
-                            else
-                                Internal.Running
+                                    else
+                                        Internal.Running
+
+                                _ ->
+                                    Internal.Running
                     in
                     ( Nothing
                     , State_ { state_ | progress = resolveProgress }
@@ -398,22 +451,52 @@ update msg ((State_ state_) as st) =
             ( Nothing
             , State_
                 { state_
-                    | targetHeight = Internal.Fixed vp.scene.height
-                    , calculatedHeight = vp.scene.height
+                    | calculatedHeight = Fixed vp.scene.height
                     , progress = Internal.Running
+                    , queriedHeight = vp.scene.height
                 }
             , Cmd.none
             )
+
+        SetViewportHeightThenTrigger h (Ok vp) ->
+            ( Nothing
+            , State_
+                { state_
+                    | calculatedHeight = Fixed vp.scene.height
+                    , targetHeight = Internal.Fixed h
+                    , progress = Internal.Running
+                    , queriedHeight = vp.scene.height
+                    , force = True
+                }
+            , Cmd.none
+            )
+
+        SetViewportHeightThenTrigger _ (Err _) ->
+            ( Nothing, st, Cmd.none )
 
         GotContainerViewport (Err _) ->
             ( Nothing, st, Cmd.none )
 
         AnimationStart ->
-            ( Just (TransitionStart state_.calculatedHeight), State_ { state_ | progress = Internal.Running }, Cmd.none )
+            ( Just (TransitionStart state_.queriedHeight), State_ { state_ | progress = Internal.Running }, Cmd.none )
 
         AnimationEnd ->
-            ( Just (TransitionEnd state_.calculatedHeight)
-            , State_ { state_ | progress = Internal.Idle }
+            let
+                ( resolveCalculatedHeight, queriedHeight ) =
+                    case state_.targetHeight of
+                        Internal.Auto ->
+                            ( Auto, state_.queriedHeight )
+
+                        Internal.Fixed fh ->
+                            ( Fixed fh, fh )
+            in
+            ( Just (TransitionEnd queriedHeight)
+            , State_
+                { state_
+                    | progress = Internal.Idle
+                    , calculatedHeight = resolveCalculatedHeight
+                    , queriedHeight = queriedHeight
+                }
             , Cmd.none
             )
 
@@ -432,7 +515,12 @@ container (Config config) =
             config.state
 
         resolveHeight =
-            String.fromFloat state_.calculatedHeight ++ "px"
+            case state_.calculatedHeight of
+                Auto ->
+                    "auto"
+
+                Fixed fh ->
+                    String.fromFloat fh ++ "px"
 
         resolveTransitionMsgs =
             case config.inject of
@@ -466,19 +554,24 @@ container (Config config) =
 
         resolveContentOpacity =
             if config.animateOpacity then
-                if
-                    state_.calculatedHeight
-                        <= 0
-                        && (state_.progress
-                                == Internal.Running
-                                || (state_.progress == Internal.Idle)
-                           )
-                then
-                    [ style "opacity" "0"
-                    ]
+                case state_.calculatedHeight of
+                    Fixed fh ->
+                        if
+                            fh
+                                <= 0
+                                && (state_.progress
+                                        == Internal.Running
+                                        || (state_.progress == Internal.Idle)
+                                   )
+                        then
+                            [ style "opacity" "0"
+                            ]
 
-                else
-                    [ style "opacity" "1" ]
+                        else
+                            [ style "opacity" "1" ]
+
+                    _ ->
+                        [ style "opacity" "1" ]
 
             else
                 [ style "opacity" "1" ]
@@ -499,18 +592,23 @@ container (Config config) =
 
         resolveAccessibilityValues =
             if config.animateOpacity then
-                if
-                    state_.calculatedHeight
-                        <= 0
-                        && state_.progress
-                        == Internal.Idle
-                then
-                    [ attribute "aria-hidden" (Encode.encode 0 <| Encode.bool True)
-                    , style "display" "none"
-                    ]
+                case state_.calculatedHeight of
+                    Fixed fh ->
+                        if
+                            fh
+                                <= 0
+                                && state_.progress
+                                == Internal.Idle
+                        then
+                            [ attribute "aria-hidden" (Encode.encode 0 <| Encode.bool True)
+                            , style "display" "none"
+                            ]
 
-                else
-                    []
+                        else
+                            []
+
+                    _ ->
+                        []
 
             else
                 []
