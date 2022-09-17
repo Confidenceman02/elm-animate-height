@@ -1,27 +1,23 @@
 module AnimateHeight.Internal exposing
     ( Bezier(..)
     , Duration(..)
+    , Progress(..)
     , TargetHeight(..)
     , TimingFunction(..)
-    , Transition(..)
-    , canClose
-    , canOpen
     , durationToMillis
     , timingToCssValue
     )
 
 
+type Progress
+    = Preparing
+    | Running
+    | Idle
+
+
 type TargetHeight
     = Auto
     | Fixed Float
-
-
-type Transition
-    = Open
-    | PrepareSlidingDown
-    | SlidingDown Float
-    | Closing
-    | Closed
 
 
 type Duration
@@ -73,26 +69,6 @@ timingToCssValue timingFunction =
                 ++ " , "
                 ++ String.fromFloat float4
                 ++ ")"
-
-
-canOpen : Transition -> Bool
-canOpen t =
-    case t of
-        Closed ->
-            True
-
-        _ ->
-            False
-
-
-canClose : Transition -> Bool
-canClose t =
-    case t of
-        Open ->
-            True
-
-        _ ->
-            False
 
 
 durationToMillis : Duration -> Float

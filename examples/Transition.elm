@@ -47,6 +47,8 @@ view ( state, content, cntState ) =
                     |> AnimateHeight.content [ span [] content ]
                     |> AnimateHeight.state state
                     |> AnimateHeight.inject AnimateHeight
+                    |> AnimateHeight.animateOpacity True
+                    |> AnimateHeight.easeInOut
                 )
             ]
         ]

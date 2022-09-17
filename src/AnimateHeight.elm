@@ -4,6 +4,7 @@ module AnimateHeight exposing
     , Msg
     , State
     , Transition(..)
+    , animateOpacity
     , auto
     , container
     , content
@@ -43,6 +44,7 @@ type Msg
     | AnimationEnd
     | GotContainerViewport (Result Dom.Error Dom.Viewport)
     | HeightMsg
+    | NoOp
 
 
 {-| -}
@@ -61,6 +63,7 @@ type alias Configuration msg =
     , state : State
     , timing : Internal.TimingFunction
     , duration : Internal.Duration
+    , animateOpacity : Bool
     }
 
 
@@ -68,7 +71,7 @@ type alias StateConfig =
     { targetHeight : Internal.TargetHeight
     , calculatedHeight : Float
     , id : Identifier
-    , running : Bool
+    , progress : Internal.Progress
     }
 
 
@@ -96,6 +99,7 @@ defaults =
     , state = init (identifier "unsafe-id")
     , duration = Internal.Fast
     , timing = Internal.Ease
+    , animateOpacity = False
     }
 
 
@@ -107,6 +111,11 @@ make =
 
 
 -- CONFIG MODIFIERS
+
+
+animateOpacity : Bool -> Config msg -> Config msg
+animateOpacity pred (Config config) =
+    Config { config | animateOpacity = pred }
 
 
 {-| This is like not having an animation at all. Duration maps to 0
@@ -292,7 +301,7 @@ init i =
         { targetHeight = Internal.Fixed 0
         , calculatedHeight = 0
         , id = i
-        , running = False
+        , progress = Internal.Idle
         }
 
 
@@ -360,7 +369,7 @@ update msg ((State_ state_) as st) =
             case state_.targetHeight of
                 Internal.Fixed h ->
                     ( Nothing
-                    , State_ { state_ | calculatedHeight = h }
+                    , State_ { state_ | calculatedHeight = h, progress = Internal.Running }
                     , Cmd.none
                     )
 
@@ -368,9 +377,16 @@ update msg ((State_ state_) as st) =
                     let
                         queryDomCmd =
                             Task.attempt GotContainerViewport <| Dom.getViewportOf idString
+
+                        resolveProgress =
+                            if state_.calculatedHeight <= 0 then
+                                Internal.Preparing
+
+                            else
+                                Internal.Running
                     in
                     ( Nothing
-                    , st
+                    , State_ { state_ | progress = resolveProgress }
                     , queryDomCmd
                     )
 
@@ -380,7 +396,7 @@ update msg ((State_ state_) as st) =
                 { state_
                     | targetHeight = Internal.Fixed vp.scene.height
                     , calculatedHeight = vp.scene.height
-                    , running = True
+                    , progress = Internal.Running
                 }
             , Cmd.none
             )
@@ -389,13 +405,16 @@ update msg ((State_ state_) as st) =
             ( Nothing, st, Cmd.none )
 
         AnimationStart ->
-            ( Just (TransitionStart state_.calculatedHeight), State_ { state_ | running = True }, Cmd.none )
+            ( Just (TransitionStart state_.calculatedHeight), State_ { state_ | progress = Internal.Running }, Cmd.none )
 
         AnimationEnd ->
             ( Just (TransitionEnd state_.calculatedHeight)
-            , State_ { state_ | running = False }
+            , State_ { state_ | progress = Internal.Idle }
             , Cmd.none
             )
+
+        NoOp ->
+            ( Nothing, st, Cmd.none )
 
 
 {-| -}
@@ -422,11 +441,12 @@ container (Config config) =
                     []
 
         resolveAnimationPlayState =
-            if state_.running then
-                [ style "animation-play-state" "running" ]
+            case state_.progress of
+                Internal.Running ->
+                    [ style "animation-play-state" "running" ]
 
-            else
-                []
+                _ ->
+                    []
 
         resolveTransitionDuration =
             [ style "transition-duration"
@@ -439,6 +459,38 @@ container (Config config) =
 
         resolveTiming =
             [ style "transition-timing-function" (Internal.timingToCssValue config.timing) ]
+
+        resolveContentOpacity =
+            if config.animateOpacity then
+                if
+                    state_.calculatedHeight
+                        <= 0
+                        && (state_.progress
+                                == Internal.Running
+                                || (state_.progress == Internal.Idle)
+                           )
+                then
+                    [ style "opacity" "0" ]
+
+                else
+                    [ style "opacity" "1" ]
+
+            else
+                [ style "opacity" "1" ]
+
+        resolveContentOpacityPropagation =
+            case config.inject of
+                Just inj ->
+                    if config.animateOpacity then
+                        [ Events.stopPropagationOn "transitionend" (Decode.succeed ( inj NoOp, True ))
+                        , Events.stopPropagationOn "transitionstart" (Decode.succeed ( inj NoOp, True ))
+                        ]
+
+                    else
+                        []
+
+                _ ->
+                    []
     in
     div
         ([ id id_
@@ -452,4 +504,13 @@ container (Config config) =
             ++ resolveTransitionDuration
             ++ resolveTiming
         )
-        config.content
+        [ div
+            ([ style "transition-property" "opacity"
+             , style "transition-timing-function" "ease-in"
+             ]
+                ++ resolveContentOpacity
+                ++ resolveContentOpacityPropagation
+                ++ resolveTransitionDuration
+            )
+            config.content
+        ]
