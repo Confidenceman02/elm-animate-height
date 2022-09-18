@@ -1,22 +1,25 @@
 module Transition exposing (..)
 
-import AnimateHeight
+import AnimateHeight as AH
 import Browser
-import Html exposing (Html, button, div, label, p, span, text)
+import Html exposing (Html, button, div, label, span, text)
 import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
-import List.Extra as ListExtra
 
 
 type Msg
-    = AnimateHeight AnimateHeight.Msg
+    = AnimateHeight AH.Msg
     | Toggle
-    | AddTo
-    | Remove
+    | Add
+
+
+type ContainerState
+    = Open
+    | Closed
 
 
 type alias Model =
-    ( AnimateHeight.State, List (Html Msg) )
+    ( AH.State, List (Html Msg), ContainerState )
 
 
 loremIpsum : String
@@ -34,71 +37,65 @@ loremIpsum =
 
 
 view : Model -> Html Msg
-view ( state, content ) =
+view ( state, content, cntState ) =
     div []
         [ div [ style "border" "solid" ]
-            [ label [] [ text "Auto" ]
-            , button [ onClick Toggle ] [ text "Toggle" ]
-            , button [ onClick AddTo ] [ text "Add" ]
-            , button [ onClick Remove ] [ text "Remove" ]
-            , AnimateHeight.container
-                (AnimateHeight.default
-                    |> AnimateHeight.content (span [] content)
-                    |> AnimateHeight.state state
-                    |> AnimateHeight.overflow (AnimateHeight.VisibleWhenAtContentHeight)
+            [ button [ onClick Toggle ] [ text "Toggle" ]
+            , button [ onClick Add ] [ text "Add" ]
+            , AH.container
+                (AH.make AnimateHeight
+                    |> AH.content [ span [] content ]
+                    |> AH.state state
+                    |> AH.animateOpacity True
+                    |> AH.easeInOut
                 )
             ]
         ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg (( state, content ) as model) =
+update msg ( state, content, cntState ) =
     case msg of
         Toggle ->
-            if AnimateHeight.isContentHeight state then
-                ( ( AnimateHeight.toMinHeight state, content ), Cmd.none )
-
-            else
-                ( ( AnimateHeight.toContentHeight state, content ), Cmd.none )
-
-        AddTo ->
-            ( ( AnimateHeight.recalculate state, content ++ [ p [] [ text loremIpsum ] ] ), Cmd.none )
-
-        Remove ->
             let
-                length =
-                    List.length content
+                newCntSt =
+                    case cntState of
+                        Open ->
+                            AH.height (AH.fixed 0) state
 
-                removeLast idx el acc =
-                    if idx == length - 1 then
-                        acc
-
-                    else
-                        el :: acc
+                        Closed ->
+                            AH.height AH.auto state
             in
-            ( ( AnimateHeight.recalculate state, ListExtra.indexedFoldr removeLast [] content ), Cmd.none )
+            ( ( newCntSt, content, cntState ), Cmd.none )
+
+        Add ->
+            ( ( state, content ++ [ text loremIpsum ], cntState ), Cmd.none )
 
         AnimateHeight animMsg ->
             let
-                ( animState, animCmd ) =
-                    AnimateHeight.update animMsg state
+                ( maybeTransition, animState, animCmd ) =
+                    AH.update animMsg state
+
+                resolveContainerState =
+                    case maybeTransition of
+                        Just (AH.TransitionEnd arrivedAtHeight) ->
+                            if arrivedAtHeight <= 0 then
+                                Closed
+
+                            else
+                                Open
+
+                        _ ->
+                            cntState
             in
-            ( ( animState, content ), Cmd.map AnimateHeight animCmd )
-
-
-subscriptions : Model -> Sub Msg
-subscriptions ( state, _ ) =
-    Sub.batch
-        [ Sub.map AnimateHeight (AnimateHeight.subscription state)
-        ]
+            ( ( animState, content, resolveContainerState ), Cmd.map AnimateHeight animCmd )
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( ( AnimateHeight.initialState (AnimateHeight.uniqueContainerId "paragraph")
-            |> AnimateHeight.setAtContentHeight
-            |> AnimateHeight.rapid
+    ( ( AH.init (AH.identifier "paragraph")
       , [ text loremIpsum ]
+      , Closed
       )
     , Cmd.none
     )
@@ -110,5 +107,5 @@ main =
         { init = always init
         , view = view
         , update = update
-        , subscriptions = subscriptions
+        , subscriptions = \( st, _, _ ) -> Sub.map AnimateHeight (AH.subscriptions st)
         }
