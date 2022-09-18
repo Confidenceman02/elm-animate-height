@@ -715,6 +715,7 @@ container (Config config) =
          , style "overflow" "hidden"
          , style "position" "relative"
          , style "transition-property" "height"
+         , attribute "data-test-id" "animate-height-container"
          ]
             ++ resolveTransitionMsgs
             ++ resolveAnimationPlayState
@@ -724,6 +725,7 @@ container (Config config) =
         [ div
             ([ style "transition-property" "opacity"
              , style "transition-timing-function" "ease-in"
+             , attribute "data-test-id" "animate-height-content"
              ]
                 ++ resolveContentOpacity
                 ++ resolveContentOpacityPropagation
