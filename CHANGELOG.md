@@ -1,3 +1,8 @@
+## [3.0.1] - 2022-09-18
+
+## Fixed
+- Dropped elm/core version supported.
+
 ## [3.0.0] - 2022-09-18
 
 ## Added
@@ -7,6 +12,7 @@
 ## Breaking changes
 - Complete refactor
 
+[3.0.1]: https://github.com/Confidenceman02/elm-animate-height/compare/3.0.0...3.0.1
 [3.0.0]: https://github.com/Confidenceman02/elm-animate-height/compare/2.1.5...3.0.0
 [2.1.5]: https://github.com/Confidenceman02/elm-animate-height/compare/2.1.4...2.1.5
 [2.1.4]: https://github.com/Confidenceman02/elm-animate-height/compare/2.1.3...2.1.4
