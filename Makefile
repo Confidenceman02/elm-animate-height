@@ -11,3 +11,7 @@ elm-reactor:
 .PHONY: preview-docs
 preview-docs: install
 	yarn elm-doc-preview
+
+.PHONY: e2e-test
+e2e-test: install
+	yarn mocha --timeout 10000 --exit -r ts-node/register 'tests/**/*.spec.ts'
