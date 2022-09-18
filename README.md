@@ -29,7 +29,7 @@ subscriptions model =
 
 __Set up an update `Msg`__ in your update function.
 
-> Ignoring the `lifeCycle` for now, the update below shows how to persist the `State` and map the `AnimateHeight.Msg` to your programs `Cmd Msg`.
+> Ignoring the `transition` for now, the update below shows how to persist the `State` and map the `AnimateHeight.Msg` to your programs `Cmd Msg`.
 
 ```elm
 type alias Model = AnimateHeight.State
@@ -38,7 +38,7 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     AnimateMsg animateMsg ->
         let
-            (lifeCycle, newState, cmds) = update animateMsg model
+            (transition, newState, cmds) = update animateMsg model
         in
         (newState, Cmd.map AnimateHeight cmds)
 
@@ -110,7 +110,7 @@ __Set the height of the container__ in your update function.
 
 > If the content is 300px `auto` will animate the container to 300px.
 
-> Check out [fixed](#fixed) to animate to a specific height.
+> Check out [fixed](https://package.elm-lang.org/packages/Confidenceman02/elm-animate-height/latest/AnimateHeight#fixed) to animate to a specific height.
 
 ```elm
 update : Msg -> Model -> (Model, Cmd Msg)
