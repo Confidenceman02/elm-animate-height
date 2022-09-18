@@ -1,5 +1,6 @@
 module AnimateHeight exposing
-    ( Msg, Config, State, auto, update, cubicBezier, ease, easeIn, Identifier, subscriptions, container, init, instant, immediate, rapid, fast, easeInOut, easeOut, fixed, height, identifier, linear, make, Transition(..), animateOpacity
+    ( Msg, Config, State, Identifier, Transition(..), init, subscriptions, update
+    , auto, fixed, cubicBezier, ease, easeIn, easeInOut, easeOut, container, instant, immediate, rapid, fast, height, identifier, linear, make, animateOpacity
     , customTiming, content, state
     )
 
@@ -8,7 +9,9 @@ module AnimateHeight exposing
 
 # Set up
 
-@docs Msg, Config, State, auto, update, cubicBezier, ease, easeIn, Identifier, subscriptions, container, init, instant, immediate, rapid, fast, easeInOut, easeOut, fixed, height, identifier, linear, make, Transition, animateOpacity
+@docs Msg, Config, State, Identifier, Transition, init, subscriptions, update
+
+@docs auto, fixed, cubicBezier, ease, easeIn, easeInOut, easeOut, container, instant, immediate, rapid, fast, height, identifier, linear, make, animateOpacity
 @docs customTiming, content, state
 
 -}
@@ -74,15 +77,17 @@ type Identifier
     = Identifier String
 
 
-{-| Transitions that are dispatched in sync with the transition lifecycle.
+{-| Transitions that are dispatched in sync with the animation lifecycle.
 
-TransitionStart - Dispatched when an animation starts.
-TransitionEnd - Dispatched when an animation ends.
+> TransitionStart - Dispatched when an animation starts.
+
+> TransitionEnd - Dispatched when an animation ends.
 
 The Float value is the target pixel height at which the animation will end.
 
-e.g. TransitionStart 200 -> The animation has started and will end at 200px
-e.g. TransitionEnd 200 -> The animation has ended at the height of 200px
+> `TransitionStart` 200 -> The animation has started and will end at 200px
+
+> `TransitionEnd` 200 -> The animation has ended at the height of 200px
 
 -}
 type Transition
@@ -90,7 +95,13 @@ type Transition
     | TransitionEnd Float
 
 
-{-| -}
+{-| The unique id of the container
+
+    yourInit : Model
+    yourInit =
+        init (identifier "some-unique-id")
+
+-}
 identifier : String -> Identifier
 identifier str =
     Identifier ("elm-animate-height-container__" ++ str)
@@ -107,7 +118,15 @@ defaults =
     }
 
 
-{-| -}
+{-| A default [Config](#Config)
+
+Argument is a msg that handles [Msg's](#Msg)
+
+    yourView : Html Msg
+    yourView =
+        container (make AnimateMsg)
+
+-}
 make : (Msg -> msg) -> Config msg
 make inj =
     Config { defaults | inject = Just inj }
@@ -117,9 +136,12 @@ make inj =
 -- CONFIG MODIFIERS
 
 
-{-| If set to true content will fade-in (and fade-out) while height is animated.
+{-| If set to `True` content will fade-in/fade-out while height is animated.
 
-        view (make |> animateOpacity True)
+    container
+        (make AnimateHeight
+            |> animateOpacity True
+        )
 
 -}
 animateOpacity : Bool -> Config msg -> Config msg
@@ -129,7 +151,12 @@ animateOpacity pred (Config config) =
 
 {-| This is like not having an animation at all. Duration maps to 0
 
-        view (make |> instant)
+    yourView : Html msg
+    yourView =
+        container
+            (make AnimateHeight
+                |> instant
+            )
 
 -}
 instant : Config msg -> Config msg
@@ -139,7 +166,7 @@ instant (Config config) =
 
 {-| Animation duration of 200ms
 
-        view (make |> immediate)
+    container (make AnimateHeight |> immediate)
 
 -}
 immediate : Config msg -> Config msg
@@ -149,7 +176,7 @@ immediate (Config config) =
 
 {-| Animation duration of 250ms
 
-        view (make |> rapid)
+    container (make AnimateHeight |> rapid)
 
 -}
 rapid : Config msg -> Config msg
@@ -159,7 +186,7 @@ rapid (Config config) =
 
 {-| Animation duration of 300ms
 
-        view (make |> fast)
+    container (make AnimateHeight |> fast)
 
 -}
 fast : Config msg -> Config msg
@@ -172,7 +199,7 @@ Negative values will be converted to their positive equivalent.
 
 custom -333 => 333
 
-        view (make |> customTiming 333)
+    container (make |> customTiming 333)
 
 -}
 customTiming : Float -> Config msg -> Config msg
@@ -188,19 +215,34 @@ customTiming f (Config config) =
     Config { config | duration = Internal.Custom d }
 
 
-{-| -}
-inject : (Msg -> msg) -> Config msg -> Config msg
-inject msg (Config config) =
-    Config { config | inject = Just msg }
+{-| The content the [container](#container) will animate.
 
+    yourView : Html Msg
+    yourView =
+        container
+            (make AnimateHeight
+                |> content [-- your content]
+            )
 
-{-| -}
+-}
 content : List (Html msg) -> Config msg -> Config msg
 content c (Config config) =
     Config { config | content = c }
 
 
-{-| -}
+{-| Sets the State value
+
+    type Model
+        = State
+
+    yourView : Model -> Html Msg
+    yourView model =
+        container
+            (make AnimateHeight
+                |> state model
+            )
+
+-}
 state : State -> Config msg -> Config msg
 state st (Config config) =
     Config { config | state = st }
@@ -208,10 +250,12 @@ state st (Config config) =
 
 {-| [Ease timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
 
-        AnimateHeight.view
-          (AnimateHeight.make
-              |> AnimateHeight.ease
-          )
+    yourView : Html Msg
+    yourView =
+        container
+            (make AnimateHeight
+                |> ease
+            )
 
 -}
 ease : Config msg -> Config msg
@@ -221,10 +265,10 @@ ease (Config config) =
 
 {-| [Ease-in timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
 
-        AnimateHeight.view
-          (AnimateHeight.make
-              |> AnimateHeight.easeIn
-          )
+    container
+        (make AnimateHeight
+            |> easeIn
+        )
 
 -}
 easeIn : Config msg -> Config msg
@@ -234,10 +278,12 @@ easeIn (Config config) =
 
 {-| [Ease-out timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
 
-        AnimateHeight.view
-          (AnimateHeight.make
-              |> AnimateHeight.easeOut
-          )
+    yourView : Html Msg
+    yourView =
+        container
+            (make AnimateHeight
+                |> easeOut
+            )
 
 -}
 easeOut : Config msg -> Config msg
@@ -247,10 +293,12 @@ easeOut (Config config) =
 
 {-| [Ease-in-out timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
 
-        AnimateHeight.view
-          (AnimateHeight.make
-              |> AnimateHeight.easeInOut
-          )
+    yourView : Html Msg
+    yourView =
+        container
+            (make AnimateHeight
+                |> easeInOut
+            )
 
 -}
 easeInOut : Config msg -> Config msg
@@ -260,10 +308,10 @@ easeInOut (Config config) =
 
 {-| [Linear timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
 
-        AnimateHeight.view
-          (AnimateHeight.make
-              |> AnimateHeight.linear
-          )
+    container
+        (make AnimateHeight
+            |> linear
+        )
 
 -}
 linear : Config msg -> Config msg
@@ -273,10 +321,12 @@ linear (Config config) =
 
 {-| [Cubic bezier timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
 
-        AnimateHeight.view
-          (AnimateHeight.make
-              |> AnimateHeight.cubicBezier 0.1 0.7 1 0.1
-          )
+    yourView : Model -> Html Msg
+    yourView model =
+        container
+            (make AnimateHeight
+                |> cubicBezier 0.1 0.7 1 0.1
+            )
 
 -}
 cubicBezier : Float -> Float -> Float -> Float -> Config msg -> Config msg
@@ -288,7 +338,16 @@ cubicBezier f1 f2 f3 f4 (Config config) =
 -- STATE MODIFIERS
 
 
-{-| -}
+{-| Set up an initial state in your init function.
+
+    type alias Model =
+        State
+
+    yourInit : Model
+    yourInit =
+        init (identifier "unique-id")
+
+-}
 init : Identifier -> State
 init i =
     State_
@@ -301,7 +360,19 @@ init i =
         }
 
 
-{-| -}
+{-| Set the height of the container
+
+    yourUpdate : Msg -> Model -> ( Model, Cmd Msg )
+    yourUpdate msg model =
+        case msg of
+            ShowTheContent ->
+                let
+                    state =
+                        update auto model
+                in
+                ( state, Cmd.none )
+
+-}
 height : Internal.TargetHeight -> State -> State
 height t (State_ st) =
     State_ { st | targetHeight = t, force = True }
@@ -309,17 +380,22 @@ height t (State_ st) =
 
 {-| Will transition to the height of the content.
 
-        update : msg -> model -> (model, Cmd msg)
-        update msg model =
-            case msg of
-                SeeContent ->
-                  let
-                      (state, cmds) =
-                      height auto model.heightState
-                  in
-                  ({ model | heightState = state }
-                   , Cmd.map AnimateHeightMsg cmds
-                  )
+When the container reaches the content height it will set the height to `auto`.
+
+    type Model
+        = State
+
+    update : msg -> Model -> ( Model, Cmd msg )
+    update msg model =
+        case msg of
+            SeeContent ->
+                let
+                    state =
+                        height auto model
+                in
+                ( state
+                , Cmd.none
+                )
 
 -}
 auto : Internal.TargetHeight
@@ -331,20 +407,20 @@ auto =
 
 Values translate to px values. e.g. 200 -> 200px
 
-        update : msg -> model -> (model, Cmd msg)
-        update msg model =
-            case msg of
-                SeeContent ->
-                  let
-                      (state, cmds) =
-                      height (fixed 200) -- Translates to 200px
-                  in
-                  ({ model | animateState = state }
-                   , Cmd.map AnimateHeightMsg cmds
-                  )
+    type Model
+        = State
 
-                AnimatHeightMsg animMsg ->
-                  --
+    update : msg -> Model -> ( Model, Cmd msg )
+    update msg model =
+        case msg of
+            SeeContent ->
+                let
+                    state =
+                        height (fixed 200)
+                in
+                ( state
+                , Cmd.none
+                )
 
 -}
 fixed : Float -> Internal.TargetHeight
@@ -352,7 +428,20 @@ fixed =
     Internal.Fixed
 
 
-{-| -}
+{-| The `AnimateHeight` subscriptions.
+
+    type Model
+        = State
+
+    type Msg
+        = AnimatetMsg AnimateHeight.Msg
+
+    yourSubs : Model -> Sub Msg
+    yourSubs model =
+        Sub.map AnimateMsg <|
+            subscriptions model
+
+-}
 subscriptions : State -> Sub Msg
 subscriptions (State_ state_) =
     if state_.force then
@@ -362,7 +451,22 @@ subscriptions (State_ state_) =
         Sub.none
 
 
-{-| -}
+{-| Add a branch in your update to handle the `AnimateHeight` Msg's.
+
+    type Model
+        = State
+
+    yourUpdate : Msg -> Model -> ( Model, Cmd Msg )
+    yourUpdate msg model =
+        case msg of
+            AnimateMsg animMsg ->
+                let
+                    ( transition, newState, cmds ) =
+                        update animMsg model
+                in
+                ( newState, Cmd.map AnimateMsg cmds )
+
+-}
 update : Msg -> State -> ( Maybe Transition, State, Cmd Msg )
 update msg ((State_ state_) as st) =
     let
@@ -488,7 +592,15 @@ update msg ((State_ state_) as st) =
             ( Nothing, st, Cmd.none )
 
 
-{-| -}
+{-| The container that wraps your view
+
+The example shows a container with nothing in it.
+
+    yourView : Html Msg
+    yourView =
+        container (make AnimateHeight)
+
+-}
 container : Config msg -> Html msg
 container (Config config) =
     let
