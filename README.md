@@ -7,6 +7,8 @@ Lightweight Elm component for animating height using CSS transitions. Slide up/d
 ## Usage
 __Set an initial state__ in your model.
 
+> By default, the height of the container is `0px` and all content inside of it is hidden.
+
 ```elm
 type alias Model = AnimateHeight.State
 
