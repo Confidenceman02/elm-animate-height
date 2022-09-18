@@ -108,9 +108,9 @@ defaults =
 
 
 {-| -}
-make : Config msg
-make =
-    Config defaults
+make : (Msg -> msg) -> Config msg
+make inj =
+    Config { defaults | inject = Just inj }
 
 
 
@@ -302,13 +302,9 @@ init i =
 
 
 {-| -}
-height : Internal.TargetHeight -> State -> ( State, Cmd Msg )
+height : Internal.TargetHeight -> State -> State
 height t (State_ st) =
-    let
-        ( _, s, c ) =
-            update HeightMsg (State_ { st | targetHeight = t })
-    in
-    ( s, c )
+    State_ { st | targetHeight = t, force = True }
 
 
 {-| Will transition to the height of the content.
@@ -356,6 +352,7 @@ fixed =
     Internal.Fixed
 
 
+{-| -}
 subscriptions : State -> Sub Msg
 subscriptions (State_ state_) =
     if state_.force then
@@ -426,7 +423,11 @@ update msg ((State_ state_) as st) =
                                     Internal.Running
                     in
                     ( Nothing
-                    , State_ { state_ | progress = resolveProgress }
+                    , State_
+                        { state_
+                            | progress = resolveProgress
+                            , force = False
+                        }
                     , queryDomCmd
                     )
 

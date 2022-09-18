@@ -43,10 +43,9 @@ view ( state, content, cntState ) =
             [ button [ onClick Toggle ] [ text "Toggle" ]
             , button [ onClick Add ] [ text "Add" ]
             , AH.container
-                (AH.make
+                (AH.make AnimateHeight
                     |> AH.content [ span [] content ]
                     |> AH.state state
-                    |> AH.inject AnimateHeight
                     |> AH.animateOpacity True
                     |> AH.easeInOut
                 )
@@ -59,7 +58,7 @@ update msg ( state, content, cntState ) =
     case msg of
         Toggle ->
             let
-                ( newCntSt, cmds ) =
+                newCntSt =
                     case cntState of
                         Open ->
                             AH.height (AH.fixed 0) state
@@ -67,7 +66,7 @@ update msg ( state, content, cntState ) =
                         Closed ->
                             AH.height AH.auto state
             in
-            ( ( newCntSt, content, cntState ), Cmd.map AnimateHeight cmds )
+            ( ( newCntSt, content, cntState ), Cmd.none )
 
         Add ->
             ( ( state, content ++ [ text loremIpsum ], cntState ), Cmd.none )
