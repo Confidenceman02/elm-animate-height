@@ -14,10 +14,19 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Build packages
-        uses: borales/actions-yarn@v2.0.0
+      - uses: c-hive/gha-yarn-cache@v1
+
+      - uses: jorelali/setup-elm@v3
         with:
-          cmd: install --ignore-engines
+          elm-version: 0.19.1
+
+      - name: Install JS dependencies
+        # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
+        run: make install
+
+      - name: Run e2e tests
+        run: make ci-e2e-test
 
       - name: elm-analyse
         uses: borales/actions-yarn@v2.0.0

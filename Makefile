@@ -15,3 +15,7 @@ preview-docs: install
 .PHONY: e2e-test
 e2e-test: install
 	yarn mocha --timeout 10000 --exit -r ts-node/register 'tests/**/*.spec.ts'
+
+.PHONY: ci-e2e-test
+ci-e2e-test: install
+	yarn start-server-and-test  'make elm-reactor' '8000' 'make e2e-test'
