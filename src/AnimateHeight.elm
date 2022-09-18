@@ -1,34 +1,17 @@
 module AnimateHeight exposing
-    ( Config
-    , Identifier
-    , Msg
-    , State
-    , Transition(..)
-    , animateOpacity
-    , auto
-    , container
-    , content
-    , cubicBezier
-    , customTiming
-    , ease
-    , easeIn
-    , easeInOut
-    , easeOut
-    , fast
-    , fixed
-    , height
-    , identifier
-    , immediate
-    , init
-    , inject
-    , instant
-    , linear
-    , make
-    , rapid
-    , state
-    , subscriptions
-    , update
+    ( Msg, Config, State, auto, update, cubicBezier, ease, easeIn, Identifier, subscriptions, container, init, instant, immediate, rapid, fast, easeInOut, easeOut, fixed, height, identifier, linear, make, Transition(..), animateOpacity
+    , customTiming, content, state
     )
+
+{-| Animate the height of your content.
+
+
+# Set up
+
+@docs Msg, Config, State, auto, update, cubicBezier, ease, easeIn, Identifier, subscriptions, container, init, instant, immediate, rapid, fast, easeInOut, easeOut, fixed, height, identifier, linear, make, Transition, animateOpacity
+@docs customTiming, content, state
+
+-}
 
 import AnimateHeight.Internal as Internal
 import Browser.Dom as Dom
