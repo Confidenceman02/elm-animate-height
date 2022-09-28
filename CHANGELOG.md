@@ -1,3 +1,8 @@
+## [3.0.2] - 2022-09-28
+
+## Fixed
+- Opacity not working when starting height is 0px.
+
 ## [3.0.1] - 2022-09-18
 
 ## Fixed
@@ -12,6 +17,7 @@
 ## Breaking changes
 - Complete refactor
 
+[3.0.2]: https://github.com/Confidenceman02/elm-animate-height/compare/3.0.1...3.0.2
 [3.0.1]: https://github.com/Confidenceman02/elm-animate-height/compare/3.0.0...3.0.1
 [3.0.0]: https://github.com/Confidenceman02/elm-animate-height/compare/2.1.5...3.0.0
 [2.1.5]: https://github.com/Confidenceman02/elm-animate-height/compare/2.1.4...2.1.5
