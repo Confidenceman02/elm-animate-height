@@ -1,6 +1,6 @@
 module AnimateHeight exposing
     ( Msg, Config, State, Identifier, Transition(..), init, subscriptions, update
-    , auto, fixed, cubicBezier, ease, easeIn, easeInOut, easeOut, container, instant, immediate, rapid, fast, height, identifier, linear, make, animateOpacity
+    , auto, fixed, cubicBezier, ease, easeIn, easeInOut, easeOut, container, instant, immediate, rapid, fast, height, heightAt, identifier, linear, make, animateOpacity
     , customTiming, content, state
     )
 
@@ -11,7 +11,7 @@ module AnimateHeight exposing
 
 @docs Msg, Config, State, Identifier, Transition, init, subscriptions, update
 
-@docs auto, fixed, cubicBezier, ease, easeIn, easeInOut, easeOut, container, instant, immediate, rapid, fast, height, identifier, linear, make, animateOpacity
+@docs auto, fixed, cubicBezier, ease, easeIn, easeInOut, easeOut, container, instant, immediate, rapid, fast, height, heightAt, identifier, linear, make, animateOpacity
 @docs customTiming, content, state
 
 -}
@@ -381,20 +381,15 @@ height t (State_ st) =
 This will not animate or produce animation events. Useful for when you want to set the
 starting height of the container without animating to it..
 
-    yourUpdate : Msg -> Model -> ( Model, Cmd Msg )
-    yourUpdate msg model =
-        case msg of
-            ShowTheContent ->
-                let
-                    state =
-                        heightAt auto model
-                in
-                ( state, Cmd.none )
+    yourInit : Model
+    yourInit =
+        init (identifier "unique-id")
+            |> heightAt auto
 
 -}
 heightAt : Internal.HeightVariant -> State -> State
 heightAt t (State_ st) =
-    State_ { st | targetHeight = t }
+    State_ { st | targetHeight = t, calculatedHeight = t }
 
 
 {-| Will transition to the height of the content.
