@@ -484,15 +484,11 @@ update msg ((State_ state_) as st) =
                                     -- Setting pixel value from a height of auto will not trigger animation.
                                     -- Instead we need to trigger an animation frame and set the height, then transition.
                                     Task.attempt (SetViewportHeightThenTrigger h) <| Dom.getViewportOf idString
-
-                                resolveProgress =
-                                    Internal.Running
                             in
                             ( Nothing
                             , State_
                                 { state_
-                                    | progress = resolveProgress
-                                    , force = False
+                                    | force = False
                                 }
                             , queryDomCmd
                             )
@@ -658,6 +654,7 @@ container (Config config) =
                                 && (state_.progress
                                         == Internal.Running
                                         || (state_.progress == Internal.Idle)
+                                        || (state_.progress == Internal.Preparing)
                                    )
                         then
                             [ style "opacity" "0"
