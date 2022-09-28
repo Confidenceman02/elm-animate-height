@@ -1,8 +1,8 @@
 module AnimateHeight.Internal exposing
     ( Bezier(..)
     , Duration(..)
+    , HeightVariant(..)
     , Progress(..)
-    , TargetHeight(..)
     , TimingFunction(..)
     , durationToMillis
     , timingToCssValue
@@ -15,7 +15,7 @@ type Progress
     | Idle
 
 
-type TargetHeight
+type HeightVariant
     = Auto
     | Fixed Float
 

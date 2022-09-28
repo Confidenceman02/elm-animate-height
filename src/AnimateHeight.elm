@@ -47,11 +47,6 @@ type Config msg
     = Config (Configuration msg)
 
 
-type CalculatedHeight
-    = Auto
-    | Fixed Float
-
-
 type alias Configuration msg =
     { content : List (Html msg)
     , inject : Maybe (Msg -> msg)
@@ -63,8 +58,8 @@ type alias Configuration msg =
 
 
 type alias StateConfig =
-    { targetHeight : Internal.TargetHeight
-    , calculatedHeight : CalculatedHeight
+    { targetHeight : Internal.HeightVariant
+    , calculatedHeight : Internal.HeightVariant
     , id : Identifier
     , progress : Internal.Progress
     , queriedHeight : Float
@@ -352,7 +347,7 @@ init : Identifier -> State
 init i =
     State_
         { targetHeight = Internal.Fixed 0
-        , calculatedHeight = Fixed 0
+        , calculatedHeight = Internal.Fixed 0
         , id = i
         , progress = Internal.Idle
         , queriedHeight = 0
@@ -360,7 +355,10 @@ init i =
         }
 
 
-{-| Set the height of the container
+{-| Set the height of the container to animate to.
+
+This will produce animation events. Checkout [Transition](#Transition)
+to find out how transition events work.
 
     yourUpdate : Msg -> Model -> ( Model, Cmd Msg )
     yourUpdate msg model =
@@ -368,14 +366,35 @@ init i =
             ShowTheContent ->
                 let
                     state =
-                        update auto model
+                        height auto model
                 in
                 ( state, Cmd.none )
 
 -}
-height : Internal.TargetHeight -> State -> State
+height : Internal.HeightVariant -> State -> State
 height t (State_ st) =
     State_ { st | targetHeight = t, force = True }
+
+
+{-| Set the height of the container.
+
+This will not animate or produce animation events. Useful for when you want to set the
+starting height of the container without animating to it..
+
+    yourUpdate : Msg -> Model -> ( Model, Cmd Msg )
+    yourUpdate msg model =
+        case msg of
+            ShowTheContent ->
+                let
+                    state =
+                        heightAt auto model
+                in
+                ( state, Cmd.none )
+
+-}
+heightAt : Internal.HeightVariant -> State -> State
+heightAt t (State_ st) =
+    State_ { st | targetHeight = t }
 
 
 {-| Will transition to the height of the content.
@@ -398,7 +417,7 @@ When the container reaches the content height it will set the height to `auto`.
                 )
 
 -}
-auto : Internal.TargetHeight
+auto : Internal.HeightVariant
 auto =
     Internal.Auto
 
@@ -423,7 +442,7 @@ Values translate to px values. e.g. 200 -> 200px
                 )
 
 -}
-fixed : Float -> Internal.TargetHeight
+fixed : Float -> Internal.HeightVariant
 fixed =
     Internal.Fixed
 
@@ -478,7 +497,7 @@ update msg ((State_ state_) as st) =
             case state_.targetHeight of
                 Internal.Fixed h ->
                     case state_.calculatedHeight of
-                        Auto ->
+                        Internal.Auto ->
                             let
                                 queryDomCmd =
                                     -- Setting pixel value from a height of auto will not trigger animation.
@@ -493,11 +512,11 @@ update msg ((State_ state_) as st) =
                             , queryDomCmd
                             )
 
-                        Fixed _ ->
+                        Internal.Fixed _ ->
                             ( Nothing
                             , State_
                                 { state_
-                                    | calculatedHeight = Fixed h
+                                    | calculatedHeight = Internal.Fixed h
                                     , queriedHeight = h
                                     , progress = Internal.Running
                                     , force = False
@@ -512,7 +531,7 @@ update msg ((State_ state_) as st) =
 
                         resolveProgress =
                             case state_.calculatedHeight of
-                                Fixed fh ->
+                                Internal.Fixed fh ->
                                     if fh <= 0 then
                                         Internal.Preparing
 
@@ -535,7 +554,7 @@ update msg ((State_ state_) as st) =
             ( Nothing
             , State_
                 { state_
-                    | calculatedHeight = Fixed vp.scene.height
+                    | calculatedHeight = Internal.Fixed vp.scene.height
                     , progress = Internal.Running
                     , queriedHeight = vp.scene.height
                 }
@@ -546,7 +565,7 @@ update msg ((State_ state_) as st) =
             ( Nothing
             , State_
                 { state_
-                    | calculatedHeight = Fixed vp.scene.height
+                    | calculatedHeight = Internal.Fixed vp.scene.height
                     , targetHeight = Internal.Fixed h
                     , progress = Internal.Running
                     , queriedHeight = vp.scene.height
@@ -569,10 +588,10 @@ update msg ((State_ state_) as st) =
                 ( resolveCalculatedHeight, queriedHeight ) =
                     case state_.targetHeight of
                         Internal.Auto ->
-                            ( Auto, state_.queriedHeight )
+                            ( Internal.Auto, state_.queriedHeight )
 
                         Internal.Fixed fh ->
-                            ( Fixed fh, fh )
+                            ( Internal.Fixed fh, fh )
             in
             ( Just (TransitionEnd queriedHeight)
             , State_
@@ -608,10 +627,10 @@ container (Config config) =
 
         resolveHeight =
             case state_.calculatedHeight of
-                Auto ->
+                Internal.Auto ->
                     "auto"
 
-                Fixed fh ->
+                Internal.Fixed fh ->
                     String.fromFloat fh ++ "px"
 
         resolveTransitionMsgs =
@@ -647,7 +666,7 @@ container (Config config) =
         resolveContentOpacity =
             if config.animateOpacity then
                 case state_.calculatedHeight of
-                    Fixed fh ->
+                    Internal.Fixed fh ->
                         if
                             fh
                                 <= 0
@@ -686,7 +705,7 @@ container (Config config) =
         resolveAccessibilityValues =
             if config.animateOpacity then
                 case state_.calculatedHeight of
-                    Fixed fh ->
+                    Internal.Fixed fh ->
                         if
                             fh
                                 <= 0
