@@ -719,6 +719,14 @@ container (Config config) =
 
             else
                 []
+
+        resolveOverflow =
+            case state_.calculatedHeight of
+                Internal.Auto ->
+                    [ style "overflow" "visible" ]
+
+                _ ->
+                    []
     in
     div
         ([ id id_
@@ -732,6 +740,7 @@ container (Config config) =
             ++ resolveAnimationPlayState
             ++ resolveTransitionDuration
             ++ resolveTiming
+            ++ resolveOverflow
         )
         [ div
             ([ style "transition-property" "opacity"
