@@ -1,3 +1,8 @@
+## [4.0.1] - 2022-10-15
+
+## Fixed
+- Overflowed content clipped by container when height is `auto`.
+
 ## [4.0.0] - 2022-09-29
 
 ## Added
@@ -25,6 +30,7 @@
 ## Breaking changes
 - Complete refactor
 
+[4.0.1]: https://github.com/Confidenceman02/elm-animate-height/compare/4.0.0...4.0.1
 [4.0.0]: https://github.com/Confidenceman02/elm-animate-height/compare/3.0.2...4.0.0
 [3.0.2]: https://github.com/Confidenceman02/elm-animate-height/compare/3.0.1...3.0.2
 [3.0.1]: https://github.com/Confidenceman02/elm-animate-height/compare/3.0.0...3.0.1
