@@ -560,20 +560,8 @@ update msg ((State_ state_) as st) =
 
                 Internal.Auto ->
                     let
-                        queryDomCmd =
-                            Task.attempt GotContainerViewport <| Dom.getViewportOf idString
-
-                        resolveProgress =
-                            case state_.calculatedHeight of
-                                Internal.Fixed fh ->
-                                    if fh <= 0 then
-                                        Internal.Preparing
-
-                                    else
-                                        Internal.Running
-
-                                _ ->
-                                    Internal.Running
+                        ( queryDomCmd, resolveProgress ) =
+                            getContainerViewport state_
                     in
                     ( Nothing
                     , State_
@@ -586,13 +574,14 @@ update msg ((State_ state_) as st) =
 
                 Internal.FixedAtAuto ->
                     let
-                        queryDomCmd =
-                            Task.attempt GotContainerViewport <| Dom.getViewportOf idString
+                        ( queryDomCmd, resolveProgress ) =
+                            getContainerViewport state_
                     in
                     ( Nothing
                     , State_
                         { state_
-                            | force = False
+                            | progress = resolveProgress
+                            , force = False
                         }
                     , queryDomCmd
                     )
@@ -817,3 +806,31 @@ container (Config config) =
             )
             config.content
         ]
+
+
+
+-- UTILS
+
+
+getContainerViewport : StateConfig -> ( Cmd Msg, Internal.Progress )
+getContainerViewport state_ =
+    let
+        (Identifier idString) =
+            state_.id
+
+        queryDomCmd =
+            Task.attempt GotContainerViewport <| Dom.getViewportOf idString
+
+        resolveProgress =
+            case state_.calculatedHeight of
+                Internal.Fixed fh ->
+                    if fh <= 0 then
+                        Internal.Preparing
+
+                    else
+                        Internal.Running
+
+                _ ->
+                    Internal.Running
+    in
+    ( queryDomCmd, resolveProgress )
