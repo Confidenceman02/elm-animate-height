@@ -3,7 +3,7 @@
     "name": "Confidenceman02/elm-animate-height",
     "summary": "Animate a containers height",
     "license": "BSD-3-Clause",
-    "version": "4.0.1",
+    "version": "4.1.0",
     "exposed-modules": [
         "AnimateHeight"
     ],
