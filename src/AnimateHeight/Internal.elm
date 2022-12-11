@@ -18,6 +18,7 @@ type Progress
 type HeightVariant
     = Auto
     | Fixed Float
+    | FixedAtAuto
 
 
 type Duration

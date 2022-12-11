@@ -1,7 +1,7 @@
 module AnimateHeight exposing
     ( Msg, Config, State, Identifier, Transition(..), init, subscriptions, update
-    , auto, fixed, cubicBezier, ease, easeIn, easeInOut, easeOut, container, instant, immediate, rapid, fast, height, heightAt, identifier, linear, make, animateOpacity
-    , customTiming, content, state
+    , auto, fixed, fixedAtAuto, cubicBezier, ease, easeIn, easeInOut, easeOut, container, instant, immediate, rapid, fast, height, heightAt
+    , identifier, linear, make, animateOpacity, customTiming, content, state
     )
 
 {-| Animate the height of your content.
@@ -10,9 +10,8 @@ module AnimateHeight exposing
 # Set up
 
 @docs Msg, Config, State, Identifier, Transition, init, subscriptions, update
-
-@docs auto, fixed, cubicBezier, ease, easeIn, easeInOut, easeOut, container, instant, immediate, rapid, fast, height, heightAt, identifier, linear, make, animateOpacity
-@docs customTiming, content, state
+@docs auto, fixed, fixedAtAuto, cubicBezier, ease, easeIn, easeInOut, easeOut, container, instant, immediate, rapid, fast, height, heightAt
+@docs identifier, linear, make, animateOpacity, customTiming, content, state
 
 -}
 
@@ -442,6 +441,32 @@ fixed =
     Internal.Fixed
 
 
+{-| Will transition to the fixed height of the container.
+
+This is handy if you want to animate the height of a fixed
+container when adding or removing content.
+
+    type Model
+        = State
+
+    update : msg -> Model -> ( Model, Cmd msg )
+    update msg model =
+        case msg of
+            ContentRemoved ->
+                let
+                    state =
+                        height fixedAtAuto
+                in
+                ( state
+                , Cmd.none
+                )
+
+-}
+fixedAtAuto : Internal.HeightVariant
+fixedAtAuto =
+    Internal.FixedAtAuto
+
+
 {-| The `AnimateHeight` subscriptions.
 
     type Model
@@ -519,22 +544,38 @@ update msg ((State_ state_) as st) =
                             , Cmd.none
                             )
 
+                        Internal.FixedAtAuto ->
+                            let
+                                queryDomCmd =
+                                    -- Content has probably been added or removed, get a new height to animate to.
+                                    Task.attempt (SetViewportHeightThenTrigger h) <| Dom.getViewportOf idString
+                            in
+                            ( Nothing
+                            , State_
+                                { state_
+                                    | force = False
+                                }
+                            , queryDomCmd
+                            )
+
                 Internal.Auto ->
                     let
-                        queryDomCmd =
-                            Task.attempt GotContainerViewport <| Dom.getViewportOf idString
+                        ( queryDomCmd, resolveProgress ) =
+                            getContainerViewport state_
+                    in
+                    ( Nothing
+                    , State_
+                        { state_
+                            | progress = resolveProgress
+                            , force = False
+                        }
+                    , queryDomCmd
+                    )
 
-                        resolveProgress =
-                            case state_.calculatedHeight of
-                                Internal.Fixed fh ->
-                                    if fh <= 0 then
-                                        Internal.Preparing
-
-                                    else
-                                        Internal.Running
-
-                                _ ->
-                                    Internal.Running
+                Internal.FixedAtAuto ->
+                    let
+                        ( queryDomCmd, resolveProgress ) =
+                            getContainerViewport state_
                     in
                     ( Nothing
                     , State_
@@ -576,7 +617,10 @@ update msg ((State_ state_) as st) =
             ( Nothing, st, Cmd.none )
 
         AnimationStart ->
-            ( Just (TransitionStart state_.queriedHeight), State_ { state_ | progress = Internal.Running }, Cmd.none )
+            ( Just (TransitionStart state_.queriedHeight)
+            , State_ { state_ | progress = Internal.Running }
+            , Cmd.none
+            )
 
         AnimationEnd ->
             let
@@ -587,6 +631,9 @@ update msg ((State_ state_) as st) =
 
                         Internal.Fixed fh ->
                             ( Internal.Fixed fh, fh )
+
+                        Internal.FixedAtAuto ->
+                            ( Internal.Fixed state_.queriedHeight, state_.queriedHeight )
             in
             ( Just (TransitionEnd queriedHeight)
             , State_
@@ -627,6 +674,11 @@ container (Config config) =
 
                 Internal.Fixed fh ->
                     String.fromFloat fh ++ "px"
+
+                -- FixedAtAuto should never make it to the view,
+                -- it is set as Fixed. Fall back to auto.
+                Internal.FixedAtAuto ->
+                    "auto"
 
         resolveTransitionMsgs =
             case config.inject of
@@ -754,3 +806,31 @@ container (Config config) =
             )
             config.content
         ]
+
+
+
+-- UTILS
+
+
+getContainerViewport : StateConfig -> ( Cmd Msg, Internal.Progress )
+getContainerViewport state_ =
+    let
+        (Identifier idString) =
+            state_.id
+
+        queryDomCmd =
+            Task.attempt GotContainerViewport <| Dom.getViewportOf idString
+
+        resolveProgress =
+            case state_.calculatedHeight of
+                Internal.Fixed fh ->
+                    if fh <= 0 then
+                        Internal.Preparing
+
+                    else
+                        Internal.Running
+
+                _ ->
+                    Internal.Running
+    in
+    ( queryDomCmd, resolveProgress )

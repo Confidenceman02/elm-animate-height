@@ -66,5 +66,19 @@ describe("examples", () => {
 
       expect(contentVisible).toBeFalsy();
     });
+
+    it("displays content when animation ends with Fix", async () => {
+      await browser.newContext();
+      const page = await browser.newPage();
+      await page.goto(`${BASE_URI}/Transition.elm`);
+
+      await page.click("button:has-text('Fix')");
+      await page.waitForSelector("[data-test-id=animate-height-content]");
+      const contentVisible = await page.isVisible(
+        "[data-test-id=animate-height-content]"
+      );
+
+      expect(contentVisible).toBeTruthy();
+    });
   });
 });

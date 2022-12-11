@@ -11,6 +11,7 @@ type Msg
     = AnimateHeight AH.Msg
     | Toggle
     | Add
+    | Fix
 
 
 type ContainerState
@@ -42,6 +43,7 @@ view ( state, content, cntState ) =
         [ div [ style "border" "solid" ]
             [ button [ onClick Toggle ] [ text "Toggle" ]
             , button [ onClick Add ] [ text "Add" ]
+            , button [ onClick Fix ] [ text "Fix" ]
             , AH.container
                 (AH.make AnimateHeight
                     |> AH.content [ span [] content ]
@@ -70,6 +72,13 @@ update msg ( state, content, cntState ) =
 
         Add ->
             ( ( state, content ++ [ text loremIpsum ], cntState ), Cmd.none )
+
+        Fix ->
+            let
+                newCntSt =
+                    AH.height AH.fixedAtAuto state
+            in
+            ( ( newCntSt, content, cntState ), Cmd.none )
 
         AnimateHeight animMsg ->
             let
