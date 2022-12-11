@@ -1,3 +1,8 @@
+## [4.1.1] - 2022-12-11
+
+## Fixed
+- Id on wrong node
+
 ## [4.1.0] - 2022-12-11
 
 ## Added
@@ -35,6 +40,7 @@
 ## Breaking changes
 - Complete refactor
 
+[4.1.1]: https://github.com/Confidenceman02/elm-animate-height/compare/4.1.0...4.1.1
 [4.1.0]: https://github.com/Confidenceman02/elm-animate-height/compare/4.0.1...4.1.0
 [4.0.1]: https://github.com/Confidenceman02/elm-animate-height/compare/4.0.0...4.0.1
 [4.0.0]: https://github.com/Confidenceman02/elm-animate-height/compare/3.0.2...4.0.0
