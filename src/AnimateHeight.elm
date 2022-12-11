@@ -781,8 +781,7 @@ container (Config config) =
                     []
     in
     div
-        ([ id id_
-         , style "height" resolveHeight
+        ([ style "height" resolveHeight
          , style "overflow" "hidden"
          , style "position" "relative"
          , style "transition-property" "height"
@@ -795,7 +794,8 @@ container (Config config) =
             ++ resolveOverflow
         )
         [ div
-            ([ style "transition-property" "opacity"
+            ([ id id_
+             , style "transition-property" "opacity"
              , style "transition-timing-function" "ease-in"
              , attribute "data-test-id" "animate-height-content"
              ]
