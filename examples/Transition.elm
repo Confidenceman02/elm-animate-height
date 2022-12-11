@@ -43,7 +43,7 @@ view ( state, content, cntState ) =
         [ div [ style "border" "solid" ]
             [ button [ onClick Toggle ] [ text "Toggle" ]
             , button [ onClick Add ] [ text "Add" ]
-            , button [ onClick Fix ] [ text "fix" ]
+            , button [ onClick Fix ] [ text "Fix" ]
             , AH.container
                 (AH.make AnimateHeight
                     |> AH.content [ span [] content ]
