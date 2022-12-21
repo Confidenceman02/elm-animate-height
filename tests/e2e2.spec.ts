@@ -81,4 +81,18 @@ describe("examples", () => {
       expect(contentVisible).toBeTruthy();
     });
   });
+
+  describe("FixedAtAuto", () => {
+    it("Shows the content by default", async () => {
+      await browser.newContext();
+      const page = await browser.newPage();
+      await page.goto(`${BASE_URI}/FixedAtAuto.elm`);
+
+      const contentVisible = await page.waitForSelector(
+        "[data-test-id=animate-height-content]"
+      );
+
+      expect(contentVisible).toBeTruthy();
+    });
+  });
 });

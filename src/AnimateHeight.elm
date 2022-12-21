@@ -63,6 +63,7 @@ type alias StateConfig =
     , progress : Internal.Progress
     , queriedHeight : Float
     , force : Bool
+    , animate : Bool
     }
 
 
@@ -351,6 +352,7 @@ init i =
         , progress = Internal.Idle
         , queriedHeight = 0
         , force = False
+        , animate = True
         }
 
 
@@ -372,7 +374,7 @@ to find out how transition events work.
 -}
 height : Internal.HeightVariant -> State -> State
 height t (State_ st) =
-    State_ { st | targetHeight = t, force = True }
+    State_ { st | targetHeight = t, force = True, animate = True }
 
 
 {-| Set the height of the container.
@@ -388,7 +390,28 @@ starting height of the container without animating to it..
 -}
 heightAt : Internal.HeightVariant -> State -> State
 heightAt t (State_ st) =
-    State_ { st | targetHeight = t, calculatedHeight = t }
+    let
+        isFixedAtAuto tr f =
+            if t == Internal.FixedAtAuto then
+                tr
+
+            else
+                f
+    in
+    State_
+        { st
+            | targetHeight = t
+            , calculatedHeight =
+                isFixedAtAuto
+                    st.calculatedHeight
+                    t
+            , force =
+                -- FixedAtAuto requires a query
+                isFixedAtAuto
+                    True
+                    False
+            , animate = False
+        }
 
 
 {-| Will transition to the height of the content.
@@ -587,12 +610,34 @@ update msg ((State_ state_) as st) =
                     )
 
         GotContainerViewport (Ok vp) ->
+            let
+                newCalculatedHeight =
+                    Internal.Fixed vp.scene.height
+            in
             ( Nothing
             , State_
                 { state_
-                    | calculatedHeight = Internal.Fixed vp.scene.height
-                    , progress = Internal.Running
+                    | calculatedHeight = newCalculatedHeight
+                    , targetHeight =
+                        if state_.targetHeight == Internal.FixedAtAuto then
+                            Internal.Fixed vp.scene.height
+
+                        else
+                            state_.targetHeight
                     , queriedHeight = vp.scene.height
+                    , progress =
+                        case state_.calculatedHeight of
+                            Internal.Auto ->
+                                -- Going from Auto to Fixed will not produce transitions.
+                                -- SetViewportHeightThenTrigger handles that.
+                                Internal.Idle
+
+                            _ ->
+                                if state_.animate then
+                                    state_.progress
+
+                                else
+                                    Internal.Idle
                 }
             , Cmd.none
             )
@@ -603,7 +648,6 @@ update msg ((State_ state_) as st) =
                 { state_
                     | calculatedHeight = Internal.Fixed vp.scene.height
                     , targetHeight = Internal.Fixed h
-                    , progress = Internal.Running
                     , queriedHeight = vp.scene.height
                     , force = True
                 }
@@ -700,10 +744,17 @@ container (Config config) =
 
         resolveTransitionDuration =
             [ style "transition-duration"
-                ((Internal.durationToMillis config.duration
-                    |> String.fromFloat
-                 )
-                    ++ "ms"
+                (if state_.animate then
+                    (Internal.durationToMillis config.duration
+                        |> String.fromFloat
+                    )
+                        ++ "ms"
+
+                 else
+                    (Internal.durationToMillis Internal.Instant
+                        |> String.fromFloat
+                    )
+                        ++ "ms"
                 )
             ]
 
@@ -782,9 +833,9 @@ container (Config config) =
     in
     div
         ([ style "height" resolveHeight
+         , style "transition-property" "height"
          , style "overflow" "hidden"
          , style "position" "relative"
-         , style "transition-property" "height"
          , attribute "data-test-id" "animate-height-container"
          ]
             ++ resolveTransitionMsgs
@@ -824,13 +875,20 @@ getContainerViewport state_ =
         resolveProgress =
             case state_.calculatedHeight of
                 Internal.Fixed fh ->
-                    if fh <= 0 then
+                    if fh <= 0 || state_.targetHeight == Internal.FixedAtAuto then
                         Internal.Preparing
 
                     else
-                        Internal.Running
+                        Internal.Idle
+
+                Internal.Auto ->
+                    if state_.targetHeight == Internal.FixedAtAuto then
+                        Internal.Preparing
+
+                    else
+                        Internal.Idle
 
                 _ ->
-                    Internal.Running
+                    Internal.Idle
     in
     ( queryDomCmd, resolveProgress )
