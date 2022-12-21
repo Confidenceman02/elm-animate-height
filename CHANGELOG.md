@@ -1,3 +1,8 @@
+## [4.1.2] - 2022-12-21
+
+## Fixed
+- `heightAt` with `fixedAtAuto` height
+
 ## [4.1.1] - 2022-12-11
 
 ## Fixed
@@ -40,6 +45,7 @@
 ## Breaking changes
 - Complete refactor
 
+[4.1.2]: https://github.com/Confidenceman02/elm-animate-height/compare/4.1.1...4.1.2
 [4.1.1]: https://github.com/Confidenceman02/elm-animate-height/compare/4.1.0...4.1.1
 [4.1.0]: https://github.com/Confidenceman02/elm-animate-height/compare/4.0.1...4.1.0
 [4.0.1]: https://github.com/Confidenceman02/elm-animate-height/compare/4.0.0...4.0.1
