@@ -1,7 +1,7 @@
 module AnimateHeight exposing
     ( Msg, Config, State, Identifier, Transition(..), init, subscriptions, update
     , auto, fixed, fixedAtAuto, cubicBezier, ease, easeIn, easeInOut, easeOut, container, instant, immediate, rapid, fast, height, heightAt
-    , identifier, linear, make, animateOpacity, customTiming, content, state
+    , getIdentifierString, identifier, linear, make, animateOpacity, customTiming, content, state
     )
 
 {-| Animate the height of your content.
@@ -11,16 +11,16 @@ module AnimateHeight exposing
 
 @docs Msg, Config, State, Identifier, Transition, init, subscriptions, update
 @docs auto, fixed, fixedAtAuto, cubicBezier, ease, easeIn, easeInOut, easeOut, container, instant, immediate, rapid, fast, height, heightAt
-@docs identifier, linear, make, animateOpacity, customTiming, content, state
+@docs getIdentifierString, identifier, linear, make, animateOpacity, customTiming, content, state
 
 -}
 
-import AnimateHeight.Internal as Internal
 import Browser.Dom as Dom
 import Browser.Events as DomEvents
 import Html exposing (Html, div)
 import Html.Attributes exposing (attribute, id, style)
 import Html.Events as Events
+import Internal.Internal as Internal
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Task
@@ -88,6 +88,20 @@ The Float value is the target pixel height at which the animation will end.
 type Transition
     = TransitionStart Float
     | TransitionEnd Float
+
+
+{-| Get the resolved identifier of the container
+
+    getIdentifierString state => "elm-animate-height-container__SomeIDYouProvided"
+
+-}
+getIdentifierString : State -> String
+getIdentifierString (State_ state_) =
+    let
+        (Identifier id_) =
+            state_.id
+    in
+    id_
 
 
 {-| The unique id of the container
