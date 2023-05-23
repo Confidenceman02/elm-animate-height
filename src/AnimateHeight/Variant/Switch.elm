@@ -50,7 +50,7 @@ type GhostState
 type IncomingView view
     = Ghost view
     | QueryingGhost view
-    | Placed view
+    | Placed ( view, Float )
     | Entering view
 
 
@@ -151,22 +151,25 @@ update msg1 ((State state_) as st) =
                     , Cmd.none
                     )
 
+                ( Just v1, Just _ ) ->
+                    ( State { state_ | incomingView = Just (QueryingGhost v1) }, queryCmd )
+
                 -- TODO Handle Placed incoming view
                 -- ( Just v1, Just v2 ) ->
                 ( Nothing, _ ) ->
                     ( State { state_ | incomingView = Nothing }, Cmd.none )
 
-                _ ->
-                    ( State { state_ | incomingView = Nothing }, Cmd.none )
-
-        GotGhostElement (Ok _) ->
-            case ( state_.incomingView, state_.currentView ) of
-                ( Just (QueryingGhost v), Nothing ) ->
+        GotGhostElement (Ok elem) ->
+            let
+                _ =
+                    Debug.log "OK" elem
+            in
+            case state_.incomingView of
+                Just (QueryingGhost v) ->
                     ( State
                         { state_
-                            | incomingView = Nothing
-                            , currentView = Just v
-                            , ahState = AnimateHeight.height AnimateHeight.fixedAtAuto state_.ahState
+                            | incomingView =
+                                Just (Placed ( v, elem.scene.height ))
                         }
                     , Cmd.none
                     )
@@ -174,7 +177,7 @@ update msg1 ((State state_) as st) =
                 _ ->
                     ( State { state_ | incomingView = Nothing }, Cmd.none )
 
-        GotGhostElement (Err err) ->
+        GotGhostElement (Err _) ->
             ( State { state_ | incomingView = Nothing }, Cmd.none )
 
         _ ->
@@ -190,7 +193,16 @@ view toView (Config config) (State state_) =
                 |> AnimateHeight.content
                     (case state_.currentView of
                         Just v ->
-                            toView v
+                            [ div [ style "position" "relative" ]
+                                [ case state_.incomingView of
+                                    Just (Placed ( v1, _ )) ->
+                                        div [ style "opacity" "0", style "position" "absolute" ] (toView v1)
+
+                                    _ ->
+                                        text ""
+                                , div [ style "position" "absolute" ] (toView v)
+                                ]
+                            ]
 
                         _ ->
                             []
@@ -227,7 +239,7 @@ viewGhost toView v inject (GhostState gs) =
     div ghostStyles
         [ AnimateHeight.container
             (AnimateHeight.make (GhostNoOp >> inject)
-                |> AnimateHeight.content (toView v)
+                |> AnimateHeight.content [ div [ style "height" "0px" ] (toView v) ]
                 |> AnimateHeight.state gs
             )
         ]
