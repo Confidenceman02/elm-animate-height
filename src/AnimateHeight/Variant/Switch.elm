@@ -1,8 +1,8 @@
 module AnimateHeight.Variant.Switch exposing
     ( Config
+    , Msg
     , State
     , identifier
-    , Msg
     , init
     , make
     , setView
@@ -140,18 +140,41 @@ update msg1 ((State state_) as st) =
                     -- Instead we need to trigger an animation frame and set the height, then transition.
                     Task.attempt GotGhostElement (Dom.getViewportOf ghostIDString)
             in
-            case resolveIncoming of
-                Just v ->
-                    ( State { state_ | incomingView = Just (QueryingGhost v) }, queryCmd )
+            case ( resolveIncoming, state_.currentView ) of
+                ( Just v, Nothing ) ->
+                    ( State
+                        { state_
+                            | incomingView = Nothing
+                            , currentView = Just v
+                            , ahState = AnimateHeight.height AnimateHeight.fixedAtAuto state_.ahState
+                        }
+                    , Cmd.none
+                    )
+
+                -- TODO Handle Placed incoming view
+                -- ( Just v1, Just v2 ) ->
+                ( Nothing, _ ) ->
+                    ( State { state_ | incomingView = Nothing }, Cmd.none )
 
                 _ ->
                     ( State { state_ | incomingView = Nothing }, Cmd.none )
 
         GotGhostElement (Ok _) ->
-            -- TODO Handle ghost viewport data
-            ( State { state_ | incomingView = Nothing }, Cmd.none )
+            case ( state_.incomingView, state_.currentView ) of
+                ( Just (QueryingGhost v), Nothing ) ->
+                    ( State
+                        { state_
+                            | incomingView = Nothing
+                            , currentView = Just v
+                            , ahState = AnimateHeight.height AnimateHeight.fixedAtAuto state_.ahState
+                        }
+                    , Cmd.none
+                    )
 
-        GotGhostElement (Err _) ->
+                _ ->
+                    ( State { state_ | incomingView = Nothing }, Cmd.none )
+
+        GotGhostElement (Err err) ->
             ( State { state_ | incomingView = Nothing }, Cmd.none )
 
         _ ->
@@ -163,6 +186,7 @@ view toView (Config config) (State state_) =
     div []
         [ AnimateHeight.container
             (AnimateHeight.make (AnimateHeightMsg >> config.inject)
+                |> AnimateHeight.state state_.ahState
                 |> AnimateHeight.content
                     (case state_.currentView of
                         Just v ->
@@ -174,7 +198,10 @@ view toView (Config config) (State state_) =
             )
         , case state_.incomingView of
             Just (Ghost v) ->
-                viewGhost toView v config.inject
+                viewGhost toView v config.inject state_.ghostState
+
+            Just (QueryingGhost v) ->
+                viewGhost toView v config.inject state_.ghostState
 
             _ ->
                 text ""
@@ -185,8 +212,8 @@ view toView (Config config) (State state_) =
 -- The only job the ghost has here is for query data.
 
 
-viewGhost : (view -> List (Html msg)) -> view -> (Msg -> msg) -> Html msg
-viewGhost toView v inject =
+viewGhost : (view -> List (Html msg)) -> view -> (Msg -> msg) -> GhostState -> Html msg
+viewGhost toView v inject (GhostState gs) =
     let
         ghostStyles =
             [ style "position" "absolute"
@@ -201,5 +228,6 @@ viewGhost toView v inject =
         [ AnimateHeight.container
             (AnimateHeight.make (GhostNoOp >> inject)
                 |> AnimateHeight.content (toView v)
+                |> AnimateHeight.state gs
             )
         ]
