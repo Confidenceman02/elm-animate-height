@@ -18,4 +18,4 @@ e2e-test: install
 
 .PHONY: ci-e2e-test
 ci-e2e-test: install
-	yarn start-server-and-test  'make elm-reactor' '8000' 'make e2e-test'
+	make elm-reactor & make e2e-test

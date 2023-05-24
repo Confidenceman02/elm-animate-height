@@ -2,8 +2,13 @@ module AnimateHeight.Variant.Switch exposing
     ( Config
     , Msg
     , State
+    , ease
+    , easeIn
+    , easeInOut
+    , easeOut
     , identifier
     , init
+    , linear
     , make
     , setView
     , subscriptions
@@ -14,9 +19,10 @@ module AnimateHeight.Variant.Switch exposing
 import AnimateHeight
 import Browser.Dom as Dom
 import Browser.Events as DomEvents
-import Html exposing (Html, div, text)
+import Html exposing (Attribute, Html, div, text)
 import Html.Attributes exposing (attribute, style)
 import Html.Events as HtmlEvents
+import Internal.Internal as Internal
 import Json.Decode as Decode
 import Task
 
@@ -65,6 +71,7 @@ type Config msg
 
 type alias Configuration msg =
     { inject : Msg -> msg
+    , timing : Internal.TimingFunction
     }
 
 
@@ -89,11 +96,34 @@ init ((Identifier i) as switchId) =
 
 make : (Msg -> msg) -> Config msg
 make inject =
-    Config { inject = inject }
+    Config { inject = inject, timing = Internal.Ease }
 
 
 
 -- STATE MODIFIERS
+
+
+{-| Set the view without transitions.
+
+Useful for when you want to set an initial view without animating to it.
+
+    yourInit : Model
+    yourInit =
+        init (identifier "unique-id")
+            |> fixView someCoolView
+
+-}
+fixView : view -> State view -> State view
+fixView v (State state_) =
+    State { state_ | incomingView = Just (Ghost v) }
+
+
+
+{- |
+   Transition from a current view to a new view.
+
+   If no current view exists the new view will still transition in.
+-}
 
 
 setView : view -> State view -> State view
@@ -101,12 +131,102 @@ setView v (State state_) =
     State { state_ | incomingView = Just (Ghost v) }
 
 
+
+-- MODIFIERS
+
+
+{-| [Ease timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
+
+    yourView : Html Msg
+    yourView =
+        container
+            (make AnimateHeight
+                |> ease
+            )
+
+-}
+ease : Config msg -> Config msg
+ease (Config config) =
+    Config { config | timing = Internal.Ease }
+
+
+{-| [Ease-in timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
+
+    container
+        (make AnimateHeight
+            |> easeIn
+        )
+
+-}
+easeIn : Config msg -> Config msg
+easeIn (Config config) =
+    Config { config | timing = Internal.EaseIn }
+
+
+{-| [Ease-out timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
+
+    yourView : Html Msg
+    yourView =
+        container
+            (make AnimateHeight
+                |> easeOut
+            )
+
+-}
+easeOut : Config msg -> Config msg
+easeOut (Config config) =
+    Config { config | timing = Internal.EaseOut }
+
+
+{-| [Ease-in-out timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
+
+    yourView : Html Msg
+    yourView =
+        container
+            (make AnimateHeight
+                |> easeInOut
+            )
+
+-}
+easeInOut : Config msg -> Config msg
+easeInOut (Config config) =
+    Config { config | timing = Internal.EaseInOut }
+
+
+{-| [Linear timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
+
+    container
+        (make AnimateHeight
+            |> linear
+        )
+
+-}
+linear : Config msg -> Config msg
+linear (Config config) =
+    Config { config | timing = Internal.Linear }
+
+
+{-| [Cubic bezier timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
+
+    yourView : Model -> Html Msg
+    yourView model =
+        container
+            (make AnimateHeight
+                |> cubicBezier 0.1 0.7 1 0.1
+            )
+
+-}
+cubicBezier : Float -> Float -> Float -> Float -> Config msg -> Config msg
+cubicBezier f1 f2 f3 f4 (Config config) =
+    Config { config | timing = Internal.CubicBezier (Internal.Bezier f1 f2 f3 f4) }
+
+
 subscriptions : State view -> Sub Msg
 subscriptions (State state_) =
     Sub.batch
         [ Sub.map AnimateHeightMsg (AnimateHeight.subscriptions state_.ahState)
         , case state_.incomingView of
-            Just (Ghost v) ->
+            Just (Ghost _) ->
                 DomEvents.onAnimationFrame (\_ -> QueryGhostMsg)
 
             Just (Entered _) ->
@@ -141,10 +261,26 @@ update msg1 ((State state_) as st) =
 
         AnimateHeightMsg msg2 ->
             let
-                ( _, updatedState, cmds ) =
+                ( trans, updatedState, cmds ) =
                     AnimateHeight.update msg2 state_.ahState
             in
-            ( State { state_ | ahState = updatedState }, Cmd.map AnimateHeightMsg cmds )
+            ( State
+                { state_
+                    | ahState =
+                        case trans of
+                            Just (AnimateHeight.TransitionEnd _) ->
+                                let
+                                    _ =
+                                        Debug.log "Ended" ()
+                                in
+                                -- AnimateHeight.heightAt AnimateHeight.auto updatedState
+                                updatedState
+
+                            _ ->
+                                updatedState
+                }
+            , Cmd.map AnimateHeightMsg cmds
+            )
 
         QueryGhostMsg ->
             let
@@ -165,7 +301,8 @@ update msg1 ((State state_) as st) =
                 queryCmd =
                     -- Setting pixel value from a height of auto will not trigger animation.
                     -- Instead we need to trigger an animation frame and set the height, then transition.
-                    Task.attempt GotGhostElement (Dom.getViewportOf ghostIDString)
+                    Task.attempt GotGhostElement
+                        (Dom.getViewportOf ghostIDString)
             in
             case ( resolveIncoming, state_.currentView ) of
                 ( Just v, Nothing ) ->
@@ -173,7 +310,10 @@ update msg1 ((State state_) as st) =
                         { state_
                             | incomingView = Nothing
                             , currentView = Just v
-                            , ahState = AnimateHeight.height AnimateHeight.fixedAtAuto state_.ahState
+                            , ahState =
+                                AnimateHeight.height
+                                    AnimateHeight.fixedAtAuto
+                                    state_.ahState
                         }
                     , Cmd.none
                     )
@@ -183,7 +323,16 @@ update msg1 ((State state_) as st) =
                         ( State { state_ | incomingView = Nothing }, Cmd.none )
 
                     else
-                        ( State { state_ | incomingView = Just (QueryingGhost v1) }, queryCmd )
+                        ( State
+                            { state_
+                                | incomingView = Just (QueryingGhost v1)
+                                , ahState =
+                                    AnimateHeight.height
+                                        AnimateHeight.fixedAtAuto
+                                        state_.ahState
+                            }
+                        , queryCmd
+                        )
 
                 ( Nothing, _ ) ->
                     ( State { state_ | incomingView = Nothing }, Cmd.none )
@@ -223,7 +372,10 @@ view toView (Config config) (State state_) =
                     (case state_.currentView of
                         Just v ->
                             let
-                                ( incomingOpac, currentOpac ) =
+                                resolveTiming =
+                                    Internal.timingToCssValue config.timing
+
+                                ( incomingStyles, currentStyles ) =
                                     case state_.incomingView of
                                         Just (QueryingGhost _) ->
                                             ( [ style "opacity" "0" ], [ style "opacity" "1" ] )
@@ -234,33 +386,24 @@ view toView (Config config) (State state_) =
                                         Just (Entered _) ->
                                             ( [], [ style "display" "none" ] )
 
+                                        Nothing ->
+                                            ( [], [] )
+
                                         _ ->
                                             ( [], [] )
                             in
                             [ div [ style "position" "relative" ]
                                 [ case state_.incomingView of
                                     Just (QueryingGhost v1) ->
-                                        div
-                                            ([ style "position" "absolute"
-                                             , style "transition-property" "opacity"
-                                             , style "transition-timing-function" "ease-in"
-                                             , style "transition-duration" "200ms"
-                                             , HtmlEvents.on "transitionend" (Decode.succeed (config.inject AnimationEnd))
-                                             ]
-                                                ++ incomingOpac
-                                            )
+                                        viewIncoming incomingStyles
+                                            config.inject
+                                            config.timing
                                             (toView v1)
 
                                     Just (Entering v1) ->
-                                        div
-                                            ([ style "position" "absolute"
-                                             , style "transition-property" "opacity"
-                                             , style "transition-timing-function" "ease-in"
-                                             , style "transition-duration" "200ms"
-                                             , HtmlEvents.on "transitionend" (Decode.succeed (config.inject AnimationEnd))
-                                             ]
-                                                ++ incomingOpac
-                                            )
+                                        viewIncoming incomingStyles
+                                            config.inject
+                                            config.timing
                                             (toView v1)
 
                                     Just (Entered v1) ->
@@ -272,12 +415,11 @@ view toView (Config config) (State state_) =
                                     _ ->
                                         text ""
                                 , div
-                                    ([ style "position" "absolute"
-                                     , style "transition-property" "opacity"
-                                     , style "transition-timing-function" "ease-in"
-                                     , style "transition-duration" "200ms"
+                                    ([ style "transition-property" "opacity"
+                                     , style "transition-timing-function" resolveTiming
+                                     , style "transition-duration" "300ms"
                                      ]
-                                        ++ currentOpac
+                                        ++ currentStyles
                                     )
                                     (toView v)
                                 ]
@@ -297,6 +439,21 @@ view toView (Config config) (State state_) =
             _ ->
                 text ""
         ]
+
+
+viewIncoming : List (Attribute msg) -> (Msg -> msg) -> Internal.TimingFunction -> List (Html msg) -> Html msg
+viewIncoming incomingOpac inject timing content =
+    div
+        ([ style "position" "absolute"
+         , style "transition-property" "opacity"
+         , style "transition-timing-function" (Internal.timingToCssValue timing)
+         , style "transition-duration" "200ms"
+         , HtmlEvents.on "transitionend"
+            (Decode.succeed (inject AnimationEnd))
+         ]
+            ++ incomingOpac
+        )
+        content
 
 
 

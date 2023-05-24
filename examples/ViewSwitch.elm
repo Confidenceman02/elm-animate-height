@@ -75,5 +75,6 @@ view st =
         [ Switch.view toView (Switch.make ViewSwitchMsg) st
         , button [ onClick (Toggle View1) ] [ text "View 1" ]
         , button [ onClick (Toggle View2) ] [ text "View 2" ]
-        , text "Hello AnimateHeight"
+        , button [ onClick (Toggle View2) ] [ text "Close" ]
+        , div [] [ text "Content that is below the animating content." ]
         ]

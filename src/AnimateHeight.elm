@@ -800,16 +800,12 @@ container (Config config) =
             else
                 [ style "opacity" "1" ]
 
-        resolveContentOpacityPropagation =
+        resolvePropagation =
             case config.inject of
                 Just inj ->
-                    if config.animateOpacity then
-                        [ Events.stopPropagationOn "transitionend" (Decode.succeed ( inj NoOp, True ))
-                        , Events.stopPropagationOn "transitionstart" (Decode.succeed ( inj NoOp, True ))
-                        ]
-
-                    else
-                        []
+                    [ Events.stopPropagationOn "transitionend" (Decode.succeed ( inj NoOp, True ))
+                    , Events.stopPropagationOn "transitionstart" (Decode.succeed ( inj NoOp, True ))
+                    ]
 
                 _ ->
                     []
@@ -865,7 +861,7 @@ container (Config config) =
              , attribute "data-test-id" "animate-height-content"
              ]
                 ++ resolveContentOpacity
-                ++ resolveContentOpacityPropagation
+                ++ resolvePropagation
                 ++ resolveTransitionDuration
                 ++ resolveAccessibilityValues
             )
