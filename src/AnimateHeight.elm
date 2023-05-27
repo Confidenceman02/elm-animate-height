@@ -1,7 +1,7 @@
 module AnimateHeight exposing
     ( Msg, Config, State, Identifier, Transition(..), init, subscriptions, update
     , auto, fixed, fixedAtAuto, cubicBezier, ease, easeIn, easeInOut, easeOut, container, instant, immediate, rapid, fast, height, heightAt
-    , getIdentifierString, identifier, linear, make, animateOpacity, customTiming, content, state
+    , getViewport, identifier, linear, make, animateOpacity, customTiming, content, state
     )
 
 {-| Animate the height of your content.
@@ -11,7 +11,7 @@ module AnimateHeight exposing
 
 @docs Msg, Config, State, Identifier, Transition, init, subscriptions, update
 @docs auto, fixed, fixedAtAuto, cubicBezier, ease, easeIn, easeInOut, easeOut, container, instant, immediate, rapid, fast, height, heightAt
-@docs getIdentifierString, identifier, linear, make, animateOpacity, customTiming, content, state
+@docs getViewport, identifier, linear, make, animateOpacity, customTiming, content, state
 
 -}
 
@@ -23,6 +23,7 @@ import Html.Events as Events
 import Internal.Internal as Internal
 import Json.Decode as Decode
 import Json.Encode as Encode
+import Platform exposing (Task)
 import Task
 
 
@@ -90,18 +91,15 @@ type Transition
     | TransitionEnd Float
 
 
-{-| Get the resolved identifier of the container
+{-| A task for the [Viewport](https://package.elm-lang.org/packages/elm/browser/latest/Browser-Dom#getViewport)
+information of the [container](#container).
 
-    getIdentifierString state => "elm-animate-height-container__SomeIDYouProvided"
+    getViewport state => Task Error Viewport
 
 -}
-getIdentifierString : State -> String
-getIdentifierString (State_ state_) =
-    let
-        (Identifier id_) =
-            state_.id
-    in
-    id_
+getViewport : State -> Task Dom.Error Dom.Viewport
+getViewport st =
+    Dom.getViewportOf (getIdentifierString st)
 
 
 {-| The unique id of the container
@@ -871,6 +869,15 @@ container (Config config) =
 
 
 -- UTILS
+
+
+getIdentifierString : State -> String
+getIdentifierString (State_ state_) =
+    let
+        (Identifier id_) =
+            state_.id
+    in
+    id_
 
 
 getContainerViewport : StateConfig -> ( Cmd Msg, Internal.Progress )

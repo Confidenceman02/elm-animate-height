@@ -30,11 +30,11 @@ import Task
 type Msg
     = GhostNoOp AnimateHeight.Msg
     | AnimateHeightMsg AnimateHeight.Msg
-    | QueryGhostMsg
+    | PrepareGhostMsg
     | SwitchView
-    | AnimationStart
     | AnimationEnd
-    | GotGhostElement (Result Dom.Error Dom.Viewport)
+    | GotQueries (Result Dom.Error ( Dom.Viewport, Dom.Viewport ))
+    | AnimateTo Float
 
 
 type State view
@@ -60,7 +60,7 @@ type GhostState
 
 type IncomingView view
     = Ghost view
-    | QueryingGhost view
+    | PreparingGhost view
     | Entering view
     | Entered view
 
@@ -232,7 +232,7 @@ subscriptions (State state_) =
         [ Sub.map AnimateHeightMsg (AnimateHeight.subscriptions state_.ahState)
         , case state_.incomingView of
             Just (Ghost _) ->
-                DomEvents.onAnimationFrame (\_ -> QueryGhostMsg)
+                DomEvents.onAnimationFrame (\_ -> PrepareGhostMsg)
 
             Just (Entered _) ->
                 DomEvents.onAnimationFrame (\_ -> SwitchView)
@@ -248,13 +248,16 @@ update msg1 ((State state_) as st) =
         SwitchView ->
             case state_.incomingView of
                 Just (Entered v) ->
-                    ( State { state_ | incomingView = Nothing, currentView = Just v }, Cmd.none )
+                    ( State
+                        { state_
+                            | incomingView = Nothing
+                            , currentView = Just v
+                        }
+                    , Cmd.none
+                    )
 
                 _ ->
                     ( State { state_ | incomingView = Nothing }, Cmd.none )
-
-        AnimationStart ->
-            ( st, Cmd.none )
 
         AnimationEnd ->
             case state_.incomingView of
@@ -269,20 +272,26 @@ update msg1 ((State state_) as st) =
                 ( trans, updatedState, cmds ) =
                     AnimateHeight.update msg2 state_.ahState
             in
-            ( State
-                { state_
-                    | ahState =
-                        case trans of
-                            Just (AnimateHeight.TransitionEnd _) ->
-                                updatedState
+            case trans of
+                Just (AnimateHeight.TransitionEnd _) ->
+                    ( State
+                        { state_
+                            | ahState =
+                                AnimateHeight.heightAt AnimateHeight.auto updatedState
+                        }
+                    , Cmd.map AnimateHeightMsg cmds
+                    )
 
-                            _ ->
+                _ ->
+                    ( State
+                        { state_
+                            | ahState =
                                 updatedState
-                }
-            , Cmd.map AnimateHeightMsg cmds
-            )
+                        }
+                    , Cmd.map AnimateHeightMsg cmds
+                    )
 
-        QueryGhostMsg ->
+        PrepareGhostMsg ->
             let
                 resolveIncoming =
                     case state_.incomingView of
@@ -295,14 +304,8 @@ update msg1 ((State state_) as st) =
                 (GhostState gs) =
                     state_.ghostState
 
-                ghostIDString =
-                    AnimateHeight.getIdentifierString gs
-
-                queryCmd =
-                    -- Setting pixel value from a height of auto will not trigger animation.
-                    -- Instead we need to trigger an animation frame and set the height, then transition.
-                    Task.attempt GotGhostElement
-                        (Dom.getViewportOf ghostIDString)
+                ghostContainer =
+                    AnimateHeight.getViewport gs
             in
             case ( resolveIncoming, state_.currentView ) of
                 ( Just v, Nothing ) ->
@@ -319,44 +322,58 @@ update msg1 ((State state_) as st) =
                     )
 
                 ( Just v1, Just v2 ) ->
+                    -- Don't bother doing any work if the incoming view is the same as the current view.
                     if v1 == v2 then
                         ( State { state_ | incomingView = Nothing }, Cmd.none )
 
                     else
+                        let
+                            queryAhContainer =
+                                AnimateHeight.getViewport state_.ahState
+                        in
                         ( State
                             { state_
-                                | incomingView = Just (QueryingGhost v1)
-                                , ahState =
-                                    AnimateHeight.height
-                                        AnimateHeight.fixedAtAuto
-                                        state_.ahState
+                                | incomingView = Just (PreparingGhost v1)
                             }
-                        , queryCmd
+                        , Cmd.batch [ Task.attempt GotQueries (Task.map2 (\a b -> ( a, b )) queryAhContainer ghostContainer) ]
                         )
 
                 ( Nothing, _ ) ->
                     ( State { state_ | incomingView = Nothing }, Cmd.none )
 
-        GotGhostElement (Ok elem) ->
+        GotQueries (Ok ( containerElem, ghost )) ->
+            ( State
+                { state_
+                    | ahState =
+                        -- Set the height to a fixed value before animating to incoming height.
+                        -- Animating from auto doesn't work.
+                        AnimateHeight.heightAt
+                            (AnimateHeight.fixed containerElem.viewport.height)
+                            state_.ahState
+                }
+            , Task.perform AnimateTo (Task.succeed ghost.scene.height)
+            )
+
+        GotQueries (Err _) ->
+            ( State { state_ | incomingView = Nothing }, Cmd.none )
+
+        AnimateTo h ->
             case state_.incomingView of
-                Just (QueryingGhost v) ->
+                Just (PreparingGhost v) ->
                     ( State
                         { state_
                             | incomingView =
                                 Just (Entering v)
                             , ahState =
                                 AnimateHeight.height
-                                    (AnimateHeight.fixed elem.scene.height)
+                                    (AnimateHeight.fixed h)
                                     state_.ahState
                         }
                     , Cmd.none
                     )
 
                 _ ->
-                    ( State { state_ | incomingView = Nothing }, Cmd.none )
-
-        GotGhostElement (Err _) ->
-            ( State { state_ | incomingView = Nothing }, Cmd.none )
+                    ( State state_, Cmd.none )
 
         _ ->
             ( st, Cmd.none )
@@ -377,7 +394,7 @@ view toView (Config config) (State state_) =
 
                                 ( incomingStyles, currentStyles ) =
                                     case state_.incomingView of
-                                        Just (QueryingGhost _) ->
+                                        Just (PreparingGhost _) ->
                                             ( [ style "opacity" "0" ], [ style "opacity" "1" ] )
 
                                         Just (Entering _) ->
@@ -394,7 +411,7 @@ view toView (Config config) (State state_) =
                             in
                             [ div [ style "position" "relative" ]
                                 [ case state_.incomingView of
-                                    Just (QueryingGhost v1) ->
+                                    Just (PreparingGhost v1) ->
                                         viewIncoming incomingStyles
                                             config.inject
                                             config.timing
@@ -417,7 +434,7 @@ view toView (Config config) (State state_) =
                                 , div
                                     ([ style "transition-property" "opacity"
                                      , style "transition-timing-function" resolveTiming
-                                     , style "transition-duration" "300ms"
+                                     , style "transition-duration" "200ms"
                                      ]
                                         ++ currentStyles
                                     )
@@ -433,7 +450,7 @@ view toView (Config config) (State state_) =
             Just (Ghost v) ->
                 viewGhost toView v config.inject state_.ghostState
 
-            Just (QueryingGhost v) ->
+            Just (PreparingGhost v) ->
                 viewGhost toView v config.inject state_.ghostState
 
             _ ->
@@ -457,7 +474,7 @@ viewIncoming incomingOpac inject timing content =
 
 
 
--- The only job the ghost has here is for query data.
+-- The only job the ghost has here is for data harvesting.
 
 
 viewGhost : (view -> List (Html msg)) -> view -> (Msg -> msg) -> GhostState -> Html msg
