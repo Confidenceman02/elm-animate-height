@@ -128,7 +128,12 @@ fixView v (State state_) =
 
 setView : view -> State view -> State view
 setView v (State state_) =
-    State { state_ | incomingView = Just (Ghost v) }
+    case state_.incomingView of
+        Just (Entering _) ->
+            State state_
+
+        _ ->
+            State { state_ | incomingView = Just (Ghost v) }
 
 
 
@@ -269,11 +274,6 @@ update msg1 ((State state_) as st) =
                     | ahState =
                         case trans of
                             Just (AnimateHeight.TransitionEnd _) ->
-                                let
-                                    _ =
-                                        Debug.log "Ended" ()
-                                in
-                                -- AnimateHeight.heightAt AnimateHeight.auto updatedState
                                 updatedState
 
                             _ ->
