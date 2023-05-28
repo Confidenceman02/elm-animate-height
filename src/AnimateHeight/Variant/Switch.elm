@@ -2,16 +2,18 @@ module AnimateHeight.Variant.Switch exposing
     ( Config
     , Msg
     , State
+    , cubicBezier
     , ease
     , easeIn
     , easeInOut
     , easeOut
+    , fixView
     , identifier
     , init
     , linear
     , make
-    , setView
     , subscriptions
+    , toView
     , update
     , view
     )
@@ -63,6 +65,8 @@ type IncomingView view
     | PreparingGhost view
     | Entering view
     | Entered view
+    | PrepareExit
+    | Exiting
 
 
 type Config msg
@@ -72,6 +76,7 @@ type Config msg
 type alias Configuration msg =
     { inject : Msg -> msg
     , timing : Internal.TimingFunction
+    , duration : Internal.Duration
     }
 
 
@@ -96,7 +101,11 @@ init ((Identifier i) as switchId) =
 
 make : (Msg -> msg) -> Config msg
 make inject =
-    Config { inject = inject, timing = Internal.Ease }
+    Config
+        { inject = inject
+        , duration = Internal.Fast
+        , timing = Internal.Ease
+        }
 
 
 
@@ -115,7 +124,15 @@ Useful for when you want to set an initial view without animating to it.
 -}
 fixView : view -> State view -> State view
 fixView v (State state_) =
-    State { state_ | incomingView = Just (Ghost v) }
+    State
+        { state_
+            | currentView = Just v
+            , incomingView = Nothing
+            , ahState =
+                AnimateHeight.heightAt
+                    AnimateHeight.auto
+                    state_.ahState
+        }
 
 
 
@@ -123,20 +140,40 @@ fixView v (State state_) =
    Transition from a current view to a new view.
 
    If no current view exists the new view will still transition in.
+
 -}
 
 
-setView : view -> State view -> State view
-setView v (State state_) =
+toView : Maybe view -> State view -> State view
+toView vw (State state_) =
     case state_.incomingView of
         Just (Entering _) ->
             State state_
 
         _ ->
-            State { state_ | incomingView = Just (Ghost v) }
+            case ( vw, state_.currentView ) of
+                ( Just v, Just _ ) ->
+                    State { state_ | incomingView = Just (Ghost v) }
+
+                ( Nothing, Just _ ) ->
+                    State
+                        { state_
+                            | incomingView = Just PrepareExit
+                        }
+
+                ( Just v, Nothing ) ->
+                    State { state_ | incomingView = Just (Ghost v) }
+
+                ( Nothing, Nothing ) ->
+                    State state_
 
 
 
+-- _ ->
+--     State
+--         { state_
+--             | incomingView = Just Exiting
+--         }
 -- MODIFIERS
 
 
@@ -237,6 +274,9 @@ subscriptions (State state_) =
             Just (Entered _) ->
                 DomEvents.onAnimationFrame (\_ -> SwitchView)
 
+            Just PrepareExit ->
+                DomEvents.onAnimationFrame (\_ -> AnimateTo 0)
+
             _ ->
                 Sub.none
         ]
@@ -252,6 +292,10 @@ update msg1 ((State state_) as st) =
                         { state_
                             | incomingView = Nothing
                             , currentView = Just v
+                            , ahState =
+                                AnimateHeight.heightAt
+                                    AnimateHeight.auto
+                                    state_.ahState
                         }
                     , Cmd.none
                     )
@@ -274,11 +318,21 @@ update msg1 ((State state_) as st) =
             in
             case trans of
                 Just (AnimateHeight.TransitionEnd _) ->
-                    ( State
-                        { state_
-                            | ahState =
-                                AnimateHeight.heightAt AnimateHeight.auto updatedState
-                        }
+                    ( case state_.incomingView of
+                        Just Exiting ->
+                            State
+                                { state_
+                                    | incomingView = Nothing
+                                    , currentView = Nothing
+                                    , ahState = updatedState
+                                }
+
+                        _ ->
+                            State
+                                { state_
+                                    | ahState =
+                                        updatedState
+                                }
                     , Cmd.map AnimateHeightMsg cmds
                     )
 
@@ -372,6 +426,18 @@ update msg1 ((State state_) as st) =
                     , Cmd.none
                     )
 
+                Just PrepareExit ->
+                    ( State
+                        { state_
+                            | ahState =
+                                AnimateHeight.height
+                                    (AnimateHeight.fixed h)
+                                    state_.ahState
+                            , incomingView = Just Exiting
+                        }
+                    , Cmd.none
+                    )
+
                 _ ->
                     ( State state_, Cmd.none )
 
@@ -380,7 +446,7 @@ update msg1 ((State state_) as st) =
 
 
 view : (view -> List (Html msg)) -> Config msg -> State view -> Html msg
-view toView (Config config) (State state_) =
+view fn (Config config) (State state_) =
     div []
         [ AnimateHeight.container
             (AnimateHeight.make (AnimateHeightMsg >> config.inject)
@@ -403,6 +469,9 @@ view toView (Config config) (State state_) =
                                         Just (Entered _) ->
                                             ( [], [ style "display" "none" ] )
 
+                                        Just Exiting ->
+                                            ( [], [ style "opacity" "0" ] )
+
                                         Nothing ->
                                             ( [], [] )
 
@@ -415,19 +484,21 @@ view toView (Config config) (State state_) =
                                         viewIncoming incomingStyles
                                             config.inject
                                             config.timing
-                                            (toView v1)
+                                            config.duration
+                                            (fn v1)
 
                                     Just (Entering v1) ->
                                         viewIncoming incomingStyles
                                             config.inject
                                             config.timing
-                                            (toView v1)
+                                            config.duration
+                                            (fn v1)
 
                                     Just (Entered v1) ->
                                         div
                                             [ style "position" "absolute"
                                             ]
-                                            (toView v1)
+                                            (fn v1)
 
                                     _ ->
                                         text ""
@@ -438,7 +509,7 @@ view toView (Config config) (State state_) =
                                      ]
                                         ++ currentStyles
                                     )
-                                    (toView v)
+                                    (fn v)
                                 ]
                             ]
 
@@ -448,23 +519,23 @@ view toView (Config config) (State state_) =
             )
         , case state_.incomingView of
             Just (Ghost v) ->
-                viewGhost toView v config.inject state_.ghostState
+                viewGhost fn v config.inject state_.ghostState
 
             Just (PreparingGhost v) ->
-                viewGhost toView v config.inject state_.ghostState
+                viewGhost fn v config.inject state_.ghostState
 
             _ ->
                 text ""
         ]
 
 
-viewIncoming : List (Attribute msg) -> (Msg -> msg) -> Internal.TimingFunction -> List (Html msg) -> Html msg
-viewIncoming incomingOpac inject timing content =
+viewIncoming : List (Attribute msg) -> (Msg -> msg) -> Internal.TimingFunction -> Internal.Duration -> List (Html msg) -> Html msg
+viewIncoming incomingOpac inject timing dur content =
     div
         ([ style "position" "absolute"
          , style "transition-property" "opacity"
          , style "transition-timing-function" (Internal.timingToCssValue timing)
-         , style "transition-duration" "200ms"
+         , style "transition-duration" (toMillis dur)
          , HtmlEvents.on "transitionend"
             (Decode.succeed (inject AnimationEnd))
          ]
@@ -478,7 +549,7 @@ viewIncoming incomingOpac inject timing content =
 
 
 viewGhost : (view -> List (Html msg)) -> view -> (Msg -> msg) -> GhostState -> Html msg
-viewGhost toView v inject (GhostState gs) =
+viewGhost fn v inject (GhostState gs) =
     let
         ghostStyles =
             [ style "position" "absolute"
@@ -492,7 +563,19 @@ viewGhost toView v inject (GhostState gs) =
     div ghostStyles
         [ AnimateHeight.container
             (AnimateHeight.make (GhostNoOp >> inject)
-                |> AnimateHeight.content [ div [ style "height" "0px" ] (toView v) ]
+                |> AnimateHeight.content [ div [ style "height" "0px" ] (fn v) ]
                 |> AnimateHeight.state gs
             )
         ]
+
+
+
+-- UTILS
+
+
+toMillis : Internal.Duration -> String
+toMillis d =
+    (Internal.durationToMillis d
+        |> String.fromFloat
+    )
+        ++ "ms"

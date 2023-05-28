@@ -9,6 +9,7 @@ import Html.Events exposing (onClick)
 type Msg
     = ViewSwitchMsg Switch.Msg
     | Toggle View
+    | Close
 
 
 type View
@@ -37,12 +38,15 @@ subscriptions st =
 update : Msg -> Switch.State View -> ( Switch.State View, Cmd Msg )
 update msg st =
     case msg of
+        Close ->
+            ( Switch.toView Nothing st, Cmd.none )
+
         Toggle v ->
             let
                 _ =
                     Debug.log "Toggle" v
             in
-            ( Switch.setView v st, Cmd.none )
+            ( Switch.toView (Just v) st, Cmd.none )
 
         ViewSwitchMsg msg1 ->
             let
@@ -75,6 +79,6 @@ view st =
         [ Switch.view toView (Switch.make ViewSwitchMsg) st
         , button [ onClick (Toggle View1) ] [ text "View 1" ]
         , button [ onClick (Toggle View2) ] [ text "View 2" ]
-        , button [ onClick (Toggle View2) ] [ text "Close" ]
+        , button [ onClick Close ] [ text "Close" ]
         , div [] [ text "Content that is below the animating content." ]
         ]
