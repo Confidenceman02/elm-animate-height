@@ -1,22 +1,19 @@
 module AnimateHeight.Variant.Switch exposing
-    ( Config
-    , Msg
-    , State
-    , cubicBezier
-    , ease
-    , easeIn
-    , easeInOut
-    , easeOut
-    , fixView
+    ( Msg, Config, State, Identifier, Transition(..), init, subscriptions, update, make
+    , cubicBezier, ease, easeIn, easeInOut, easeOut, linear, fixView, toView, view
     , identifier
-    , init
-    , linear
-    , make
-    , subscriptions
-    , toView
-    , update
-    , view
     )
+
+{-| Animate height between views
+
+
+# Set up
+
+@docs Msg, Config, State, Identifier, Transition, init, subscriptions, update, make
+@docs cubicBezier, ease, easeIn, easeInOut, easeOut, linear, fixView, toView, view
+@docs identifier
+
+-}
 
 import AnimateHeight
 import Browser.Dom as Dom
@@ -29,6 +26,7 @@ import Json.Decode as Decode
 import Task
 
 
+{-| -}
 type Msg
     = GhostNoOp AnimateHeight.Msg
     | AnimateHeightMsg AnimateHeight.Msg
@@ -39,6 +37,7 @@ type Msg
     | AnimateTo Float
 
 
+{-| -}
 type State view
     = State (StateConfiguration view)
 
@@ -52,6 +51,7 @@ type alias StateConfiguration view =
     }
 
 
+{-| -}
 type Identifier
     = Identifier String
 
@@ -69,6 +69,7 @@ type IncomingView view
     | Exiting
 
 
+{-| -}
 type Config msg
     = Config (Configuration msg)
 
@@ -80,6 +81,54 @@ type alias Configuration msg =
     }
 
 
+{-| Transitions that are dispatched in sync with the animation lifecycle.
+
+> TransitionStart - Dispatched when an animation starts.
+
+> TransitionEnd - Dispatched when an animation ends.
+
+The parameter on each type represents the target view.
+
+> `TransitionStart` view1 -> The transition has started and will switch from the current view to the view1 view.
+
+> `TransitionEnd` view1 -> The transition has ended and the view1 view is rendered.
+
+    ```
+
+    type YourViews
+      = View1
+      | View2
+
+    yourUpdate msg yourModel =
+      case msg of
+        SwitchMsg msg ->
+          let
+              (maybeTransition,updatedState, cmds) = update msg yourModel.switchState
+
+              handleTransition =
+                case maybeTransition of
+                  Just ( TransitionStart View1 ) ->
+                    -- Do something
+
+                  Just (TransitionEnd View2) ->
+                    -- Do something
+          in
+          ({model | switchState = updatedState}, Cmd.map SwitchMsg cmds)
+
+
+    ```
+
+-}
+type Transition view
+    = TransitionStart view
+    | TransitionEnd view
+
+
+{-| A unique indentifier that Switch uses internally.
+
+NOTE: The String passed must be unique.
+
+-}
 identifier : String -> Identifier
 identifier =
     String.split " "
@@ -88,17 +137,46 @@ identifier =
         >> Identifier
 
 
+{-| Initialize a Switch [State](#State)
+
+NOTE: Store the [State](#State) structure in your model.
+
+    ```
+    type YourViews
+      = View1
+      | View2
+
+    type alias Model =
+      {
+        switchState : State YourViews
+      }
+
+    yourInit =
+        { switchState = init (identifier "some-unique-string") }
+
+    ```
+
+-}
 init : Identifier -> State view
 init ((Identifier i) as switchId) =
     State
         { currentView = Nothing
         , incomingView = Nothing
         , ahState = AnimateHeight.init (AnimateHeight.identifier i)
-        , ghostState = GhostState <| AnimateHeight.init (AnimateHeight.identifier "ghost")
+        , ghostState = GhostState <| AnimateHeight.init (AnimateHeight.identifier (i ++ "switch-ghost"))
         , id = switchId
         }
 
 
+{-| A default [Config](#Config)
+
+Argument is a msg that handles [Msg's](#Msg)
+
+    switchConfig : Config YourViews
+    switchConfig =
+        make SwitchMsg
+
+-}
 make : (Msg -> msg) -> Config msg
 make inject =
     Config
@@ -116,10 +194,14 @@ make inject =
 
 Useful for when you want to set an initial view without animating to it.
 
-    yourInit : Model
-    yourInit =
-        init (identifier "unique-id")
-            |> fixView someCoolView
+     type YourViews
+       = View1
+       | View2
+
+     yourInit : Model
+     yourInit =
+         init (identifier "unique-id")
+             |> fixView someCoolView
 
 -}
 fixView : view -> State view -> State view
@@ -139,7 +221,20 @@ fixView v (State state_) =
 {- |
    Transition from a current view to a new view.
 
-   If no current view exists the new view will still transition in.
+   If no current view exists the incoming view will still transition in.
+
+   ```
+   type YourMsg
+    = ChangeView
+
+   yourUpdate model msg =
+     case msg of
+       ChangeView ->
+          let
+              newState =  toView (Just View2) model.switchState
+          in
+          ({model | switchState = newState})
+   ```
 
 -}
 
@@ -169,11 +264,6 @@ toView vw (State state_) =
 
 
 
--- _ ->
---     State
---         { state_
---             | incomingView = Just Exiting
---         }
 -- MODIFIERS
 
 
@@ -181,8 +271,8 @@ toView vw (State state_) =
 
     yourView : Html Msg
     yourView =
-        container
-            (make AnimateHeight
+        view
+            (make SwitchView
                 |> ease
             )
 
@@ -194,10 +284,8 @@ ease (Config config) =
 
 {-| [Ease-in timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
 
-    container
-        (make AnimateHeight
-            |> easeIn
-        )
+    make SwitchView
+        |> easeIn
 
 -}
 easeIn : Config msg -> Config msg
@@ -209,10 +297,8 @@ easeIn (Config config) =
 
     yourView : Html Msg
     yourView =
-        container
-            (make AnimateHeight
-                |> easeOut
-            )
+        make SwitchView
+            |> easeOut
 
 -}
 easeOut : Config msg -> Config msg
@@ -222,12 +308,8 @@ easeOut (Config config) =
 
 {-| [Ease-in-out timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
 
-    yourView : Html Msg
-    yourView =
-        container
-            (make AnimateHeight
-                |> easeInOut
-            )
+    make SwitchView
+        |> easeInOut
 
 -}
 easeInOut : Config msg -> Config msg
@@ -237,10 +319,8 @@ easeInOut (Config config) =
 
 {-| [Linear timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
 
-    container
-        (make AnimateHeight
-            |> linear
-        )
+    make AnimateHeight
+        |> linear
 
 -}
 linear : Config msg -> Config msg
@@ -250,12 +330,8 @@ linear (Config config) =
 
 {-| [Cubic bezier timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
 
-    yourView : Model -> Html Msg
-    yourView model =
-        container
-            (make AnimateHeight
-                |> cubicBezier 0.1 0.7 1 0.1
-            )
+    make SwitchView
+        |> cubicBezier 0.1 0.7 1 0.1
 
 -}
 cubicBezier : Float -> Float -> Float -> Float -> Config msg -> Config msg
@@ -263,6 +339,20 @@ cubicBezier f1 f2 f3 f4 (Config config) =
     Config { config | timing = Internal.CubicBezier (Internal.Bezier f1 f2 f3 f4) }
 
 
+{-| The `Switch` subscriptions.
+
+    type Model
+        = State
+
+    type Msg
+        = SwitchMsg Switch.Msg
+
+    yourSubs : Model -> Sub Msg
+    yourSubs model =
+        Sub.map SwitchMsg <|
+            subscriptions model
+
+-}
 subscriptions : State view -> Sub Msg
 subscriptions (State state_) =
     Sub.batch
@@ -282,13 +372,30 @@ subscriptions (State state_) =
         ]
 
 
-update : Msg -> State view -> ( State view, Cmd Msg )
+{-| Add a branch in your update to handle the `Switch` Msg's.
+
+    type Model
+        = State
+
+    yourUpdate : Msg -> Model -> ( Model, Cmd Msg )
+    yourUpdate msg model =
+        case msg of
+            SwitchMsg switchMsg ->
+                let
+                    ( transition, newState, cmds ) =
+                        update switchMsg model
+                in
+                ( newState, Cmd.map SwitchMsg cmds )
+
+-}
+update : Msg -> State view -> ( Maybe (Transition view), State view, Cmd Msg )
 update msg1 ((State state_) as st) =
     case msg1 of
         SwitchView ->
             case state_.incomingView of
                 Just (Entered v) ->
-                    ( State
+                    ( Nothing
+                    , State
                         { state_
                             | incomingView = Nothing
                             , currentView = Just v
@@ -301,15 +408,15 @@ update msg1 ((State state_) as st) =
                     )
 
                 _ ->
-                    ( State { state_ | incomingView = Nothing }, Cmd.none )
+                    ( Nothing, State { state_ | incomingView = Nothing }, Cmd.none )
 
         AnimationEnd ->
             case state_.incomingView of
                 Just (Entering v) ->
-                    ( State { state_ | incomingView = Just (Entered v) }, Cmd.none )
+                    ( Nothing, State { state_ | incomingView = Just (Entered v) }, Cmd.none )
 
                 _ ->
-                    ( st, Cmd.none )
+                    ( Nothing, st, Cmd.none )
 
         AnimateHeightMsg msg2 ->
             let
@@ -318,26 +425,32 @@ update msg1 ((State state_) as st) =
             in
             case trans of
                 Just (AnimateHeight.TransitionEnd _) ->
-                    ( case state_.incomingView of
+                    case state_.incomingView of
                         Just Exiting ->
-                            State
+                            ( Nothing
+                            , State
                                 { state_
                                     | incomingView = Nothing
                                     , currentView = Nothing
                                     , ahState = updatedState
                                 }
+                            , Cmd.map AnimateHeightMsg cmds
+                            )
 
+                        -- TODO Handle incoming view of Nothing
                         _ ->
-                            State
+                            ( Nothing
+                            , State
                                 { state_
                                     | ahState =
                                         updatedState
                                 }
-                    , Cmd.map AnimateHeightMsg cmds
-                    )
+                            , Cmd.map AnimateHeightMsg cmds
+                            )
 
                 _ ->
-                    ( State
+                    ( Nothing
+                    , State
                         { state_
                             | ahState =
                                 updatedState
@@ -363,7 +476,8 @@ update msg1 ((State state_) as st) =
             in
             case ( resolveIncoming, state_.currentView ) of
                 ( Just v, Nothing ) ->
-                    ( State
+                    ( Nothing
+                    , State
                         { state_
                             | incomingView = Nothing
                             , currentView = Just v
@@ -378,14 +492,15 @@ update msg1 ((State state_) as st) =
                 ( Just v1, Just v2 ) ->
                     -- Don't bother doing any work if the incoming view is the same as the current view.
                     if v1 == v2 then
-                        ( State { state_ | incomingView = Nothing }, Cmd.none )
+                        ( Nothing, State { state_ | incomingView = Nothing }, Cmd.none )
 
                     else
                         let
                             queryAhContainer =
                                 AnimateHeight.getViewport state_.ahState
                         in
-                        ( State
+                        ( Nothing
+                        , State
                             { state_
                                 | incomingView = Just (PreparingGhost v1)
                             }
@@ -393,10 +508,11 @@ update msg1 ((State state_) as st) =
                         )
 
                 ( Nothing, _ ) ->
-                    ( State { state_ | incomingView = Nothing }, Cmd.none )
+                    ( Nothing, State { state_ | incomingView = Nothing }, Cmd.none )
 
         GotQueries (Ok ( containerElem, ghost )) ->
-            ( State
+            ( Nothing
+            , State
                 { state_
                     | ahState =
                         -- Set the height to a fixed value before animating to incoming height.
@@ -409,12 +525,13 @@ update msg1 ((State state_) as st) =
             )
 
         GotQueries (Err _) ->
-            ( State { state_ | incomingView = Nothing }, Cmd.none )
+            ( Nothing, State { state_ | incomingView = Nothing }, Cmd.none )
 
         AnimateTo h ->
             case state_.incomingView of
                 Just (PreparingGhost v) ->
-                    ( State
+                    ( Nothing
+                    , State
                         { state_
                             | incomingView =
                                 Just (Entering v)
@@ -427,7 +544,8 @@ update msg1 ((State state_) as st) =
                     )
 
                 Just PrepareExit ->
-                    ( State
+                    ( Nothing
+                    , State
                         { state_
                             | ahState =
                                 AnimateHeight.height
@@ -439,12 +557,36 @@ update msg1 ((State state_) as st) =
                     )
 
                 _ ->
-                    ( State state_, Cmd.none )
+                    ( Nothing, State state_, Cmd.none )
 
         _ ->
-            ( st, Cmd.none )
+            ( Nothing, st, Cmd.none )
 
 
+{-| Render the switch view
+
+    type YourView
+        = View1
+        | View2
+        | View3
+
+    viewResolver : YourView -> List (Html msg)
+    viewResolver v =
+        case v of
+            View1 ->
+                [ text "View 1" ]
+
+            View2 ->
+                [ text "View 2" ]
+
+            View3 ->
+                [ text "View 3" ]
+
+    yourView : Model -> Html Msg
+    yourView model =
+        view viewResolver (make SwitchView) model.switchView
+
+-}
 view : (view -> List (Html msg)) -> Config msg -> State view -> Html msg
 view fn (Config config) (State state_) =
     div []
@@ -536,6 +678,7 @@ viewIncoming incomingOpac inject timing dur content =
          , style "transition-property" "opacity"
          , style "transition-timing-function" (Internal.timingToCssValue timing)
          , style "transition-duration" (toMillis dur)
+         , attribute "aria-hidden" "true"
          , HtmlEvents.on "transitionend"
             (Decode.succeed (inject AnimationEnd))
          ]
