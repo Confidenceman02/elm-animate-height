@@ -129,6 +129,12 @@ update msg model =
             (newState, Cmd.none)
 ```
 
+## Variants
+
+__Switch__
+
+For animating height when switching between views check out the [Switch](/packages/Confidenceman02/elm-animate-height/4.1.2/AnimateHeight-Variant-Switch) variant.
+
 ## Performance considerations
 Animating the height of a container does mean paying a performance cost depending on how much work
 the browser needs to perform on layout and paint operations.
