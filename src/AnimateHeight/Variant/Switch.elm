@@ -4,7 +4,7 @@ module AnimateHeight.Variant.Switch exposing
     , identifier
     )
 
-{-| Animate height between views
+{-| A slick variant that animates height when switching between your views.
 
 
 # Set up
@@ -83,17 +83,15 @@ type alias Configuration msg =
 
 {-| Transitions that are dispatched in sync with the animation lifecycle.
 
-> TransitionStart - Dispatched when an animation starts.
+`TransitionStart` - Dispatched when an animation starts.
 
-> TransitionEnd - Dispatched when an animation ends.
+`TransitionEnd` - Dispatched when an animation ends.
 
 The parameter on each type represents the target view.
 
-> `TransitionStart` view1 -> The transition has started and will switch from the current view to the view1 view.
+`TransitionStart view1` -> The transition has started and will switch from the current view to the `view1` view.
 
-> `TransitionEnd` view1 -> The transition has ended and the view1 view is rendered.
-
-    ```
+`TransitionEnd view1` -> The transition has ended and the `view1` view is rendered.
 
     type YourViews
       = View1
@@ -103,7 +101,8 @@ The parameter on each type represents the target view.
       case msg of
         SwitchMsg msg ->
           let
-              (maybeTransition,updatedState, cmds) = update msg yourModel.switchState
+              (maybeTransition, updatedState, cmds) =
+                  update msg yourModel.switchState
 
               handleTransition =
                 case maybeTransition of
@@ -114,9 +113,6 @@ The parameter on each type represents the target view.
                     -- Do something
           in
           ({model | switchState = updatedState}, Cmd.map SwitchMsg cmds)
-
-
-    ```
 
 -}
 type Transition view
@@ -139,22 +135,18 @@ identifier =
 
 {-| Initialize a Switch [State](#State)
 
-NOTE: Store the [State](#State) structure in your model.
+NOTE: Ensure you store the [State](#State) structure in your model.
 
-    ```
-    type YourViews
-      = View1
-      | View2
+    type YourView
+        = View1
+        | View2
 
     type alias Model =
-      {
-        switchState : State YourViews
-      }
+        { switchState : State YourView
+        }
 
     yourInit =
         { switchState = init (identifier "some-unique-string") }
-
-    ```
 
 -}
 init : Identifier -> State view
@@ -194,14 +186,14 @@ make inject =
 
 Useful for when you want to set an initial view without animating to it.
 
-     type YourViews
-       = View1
-       | View2
+    type YourView
+        = View1
+        | View2
 
-     yourInit : Model
-     yourInit =
-         init (identifier "unique-id")
-             |> fixView someCoolView
+    yourInit : Model
+    yourInit =
+        init (identifier "unique-id")
+            |> fixView View1
 
 -}
 fixView : view -> State view -> State view
@@ -217,28 +209,26 @@ fixView v (State state_) =
         }
 
 
+{-| Switch from a current view to a new view.
 
-{- |
-   Transition from a current view to a new view.
+If no current view exists the incoming view will still transition in.
 
-   If no current view exists the incoming view will still transition in.
+    type alias Model =
+        { switchState : State }
 
-   ```
-   type YourMsg
-    = ChangeView
+    type YourMsg
+        = ChangeView
 
-   yourUpdate model msg =
-     case msg of
-       ChangeView ->
-          let
-              newState =  toView (Just View2) model.switchState
-          in
-          ({model | switchState = newState})
-   ```
+    yourUpdate model msg =
+        case msg of
+            ChangeView ->
+                let
+                    newState =
+                        toView (Just View2) model.switchState
+                in
+                ( { model | switchState = newState }, Cmd.none )
 
 -}
-
-
 toView : Maybe view -> State view -> State view
 toView vw (State state_) =
     case state_.incomingView of
@@ -269,12 +259,8 @@ toView vw (State state_) =
 
 {-| [Ease timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
 
-    yourView : Html Msg
-    yourView =
-        view
-            (make SwitchView
-                |> ease
-            )
+     make SwitchView
+          |> ease
 
 -}
 ease : Config msg -> Config msg
@@ -295,10 +281,8 @@ easeIn (Config config) =
 
 {-| [Ease-out timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
 
-    yourView : Html Msg
-    yourView =
-        make SwitchView
-            |> easeOut
+      make SwitchView
+          |> easeOut
 
 -}
 easeOut : Config msg -> Config msg
@@ -319,7 +303,7 @@ easeInOut (Config config) =
 
 {-| [Linear timing](https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function)
 
-    make AnimateHeight
+    make SwitchView
         |> linear
 
 -}
@@ -339,10 +323,10 @@ cubicBezier f1 f2 f3 f4 (Config config) =
     Config { config | timing = Internal.CubicBezier (Internal.Bezier f1 f2 f3 f4) }
 
 
-{-| The `Switch` subscriptions.
+{-| Subcriptions for the switch.
 
-    type Model
-        = State
+    type alias Model =
+        { switchState : State }
 
     type Msg
         = SwitchMsg Switch.Msg
@@ -350,7 +334,7 @@ cubicBezier f1 f2 f3 f4 (Config config) =
     yourSubs : Model -> Sub Msg
     yourSubs model =
         Sub.map SwitchMsg <|
-            subscriptions model
+            subscriptions model.switchState
 
 -}
 subscriptions : State view -> Sub Msg
@@ -374,8 +358,11 @@ subscriptions (State state_) =
 
 {-| Add a branch in your update to handle the `Switch` Msg's.
 
-    type Model
-        = State
+    type alias Model =
+        { switchState : State }
+
+    type Msg
+        = SwitchMsg
 
     yourUpdate : Msg -> Model -> ( Model, Cmd Msg )
     yourUpdate msg model =
@@ -383,9 +370,11 @@ subscriptions (State state_) =
             SwitchMsg switchMsg ->
                 let
                     ( transition, newState, cmds ) =
-                        update switchMsg model
+                        update switchMsg model.switchState
                 in
-                ( newState, Cmd.map SwitchMsg cmds )
+                ( { model | switchState = newState }
+                , Cmd.map SwitchMsg cmds
+                )
 
 -}
 update : Msg -> State view -> ( Maybe (Transition view), State view, Cmd Msg )
@@ -437,7 +426,6 @@ update msg1 ((State state_) as st) =
                             , Cmd.map AnimateHeightMsg cmds
                             )
 
-                        -- TODO Handle incoming view of Nothing
                         _ ->
                             ( Nothing
                             , State
@@ -504,7 +492,10 @@ update msg1 ((State state_) as st) =
                             { state_
                                 | incomingView = Just (PreparingGhost v1)
                             }
-                        , Cmd.batch [ Task.attempt GotQueries (Task.map2 (\a b -> ( a, b )) queryAhContainer ghostContainer) ]
+                        , Cmd.batch
+                            [ Task.attempt GotQueries
+                                (Task.map2 (\a b -> ( a, b )) queryAhContainer ghostContainer)
+                            ]
                         )
 
                 ( Nothing, _ ) ->
