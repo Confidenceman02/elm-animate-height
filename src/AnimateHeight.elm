@@ -1,7 +1,7 @@
 module AnimateHeight exposing
     ( Msg, Config, State, Identifier, Transition(..), init, subscriptions, update
     , auto, fixed, fixedAtAuto, cubicBezier, ease, easeIn, easeInOut, easeOut, container, instant, immediate, rapid, fast, height, heightAt
-    , identifier, linear, make, animateOpacity, customTiming, content, state
+    , getViewport, identifier, linear, make, animateOpacity, customTiming, content, state
     )
 
 {-| Animate the height of your content.
@@ -11,18 +11,19 @@ module AnimateHeight exposing
 
 @docs Msg, Config, State, Identifier, Transition, init, subscriptions, update
 @docs auto, fixed, fixedAtAuto, cubicBezier, ease, easeIn, easeInOut, easeOut, container, instant, immediate, rapid, fast, height, heightAt
-@docs identifier, linear, make, animateOpacity, customTiming, content, state
+@docs getViewport, identifier, linear, make, animateOpacity, customTiming, content, state
 
 -}
 
-import AnimateHeight.Internal as Internal
 import Browser.Dom as Dom
 import Browser.Events as DomEvents
 import Html exposing (Html, div)
 import Html.Attributes exposing (attribute, id, style)
 import Html.Events as Events
+import Internal.Internal as Internal
 import Json.Decode as Decode
 import Json.Encode as Encode
+import Platform exposing (Task)
 import Task
 
 
@@ -88,6 +89,17 @@ The Float value is the target pixel height at which the animation will end.
 type Transition
     = TransitionStart Float
     | TransitionEnd Float
+
+
+{-| A task for the [Viewport](https://package.elm-lang.org/packages/elm/browser/latest/Browser-Dom#getViewport)
+information of the [container](#container).
+
+    getViewport state => Task Error Viewport
+
+-}
+getViewport : State -> Task Dom.Error Dom.Viewport
+getViewport st =
+    Dom.getViewportOf (getIdentifierString st)
 
 
 {-| The unique id of the container
@@ -786,16 +798,12 @@ container (Config config) =
             else
                 [ style "opacity" "1" ]
 
-        resolveContentOpacityPropagation =
+        resolvePropagation =
             case config.inject of
                 Just inj ->
-                    if config.animateOpacity then
-                        [ Events.stopPropagationOn "transitionend" (Decode.succeed ( inj NoOp, True ))
-                        , Events.stopPropagationOn "transitionstart" (Decode.succeed ( inj NoOp, True ))
-                        ]
-
-                    else
-                        []
+                    [ Events.stopPropagationOn "transitionend" (Decode.succeed ( inj NoOp, True ))
+                    , Events.stopPropagationOn "transitionstart" (Decode.succeed ( inj NoOp, True ))
+                    ]
 
                 _ ->
                     []
@@ -851,7 +859,7 @@ container (Config config) =
              , attribute "data-test-id" "animate-height-content"
              ]
                 ++ resolveContentOpacity
-                ++ resolveContentOpacityPropagation
+                ++ resolvePropagation
                 ++ resolveTransitionDuration
                 ++ resolveAccessibilityValues
             )
@@ -861,6 +869,15 @@ container (Config config) =
 
 
 -- UTILS
+
+
+getIdentifierString : State -> String
+getIdentifierString (State_ state_) =
+    let
+        (Identifier id_) =
+            state_.id
+    in
+    id_
 
 
 getContainerViewport : StateConfig -> ( Cmd Msg, Internal.Progress )
