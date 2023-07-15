@@ -1,3 +1,8 @@
+## [4.2.0] - 2023-07-15
+
+## Added
+- Switch variant for animating between views.
+
 ## [4.1.2] - 2022-12-21
 
 ## Fixed
@@ -45,6 +50,7 @@
 ## Breaking changes
 - Complete refactor
 
+[4.2.0]: https://github.com/Confidenceman02/elm-animate-height/compare/4.1.2...4.2.0
 [4.1.2]: https://github.com/Confidenceman02/elm-animate-height/compare/4.1.1...4.1.2
 [4.1.1]: https://github.com/Confidenceman02/elm-animate-height/compare/4.1.0...4.1.1
 [4.1.0]: https://github.com/Confidenceman02/elm-animate-height/compare/4.0.1...4.1.0
