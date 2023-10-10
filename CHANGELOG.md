@@ -1,55 +1,77 @@
+## [4.2.1] - 2023-10-10
+
+## Fixed
+
+- Width snap on view switch
+
+## Added
+
+- Switch variant for animating between views.
+
 ## [4.2.0] - 2023-07-15
 
 ## Added
+
 - Switch variant for animating between views.
 
 ## [4.1.2] - 2022-12-21
 
 ## Fixed
+
 - `heightAt` with `fixedAtAuto` height
 
 ## [4.1.1] - 2022-12-11
 
 ## Fixed
+
 - Id on wrong node
 
 ## [4.1.0] - 2022-12-11
 
 ## Added
+
 - `fixedAtAuto` height function.
 
 ## [4.0.1] - 2022-10-15
 
 ## Fixed
+
 - Overflowed content clipped by container when height is `auto`.
 
 ## [4.0.0] - 2022-09-29
 
 ## Added
+
 - heightAt to set the height of container with no transitions or animation.
 
 ## Breaking changes
+
 - Types changed to Internal types on some functions.
 
 ## [3.0.2] - 2022-09-28
 
 ## Fixed
+
 - Opacity not working when starting height is 0px.
 
 ## [3.0.1] - 2022-09-18
 
 ## Fixed
+
 - Dropped elm/core version supported.
 
 ## [3.0.0] - 2022-09-18
 
 ## Added
+
 - Css transitions only
 - Animate content opacity
 
 ## Breaking changes
+
 - Complete refactor
 
+[4.2.1]: https://github.com/Confidenceman02/elm-animate-height/compare/4.2.0...4.2.1
 [4.2.0]: https://github.com/Confidenceman02/elm-animate-height/compare/4.1.2...4.2.0
 [4.1.2]: https://github.com/Confidenceman02/elm-animate-height/compare/4.1.1...4.1.2
 [4.1.1]: https://github.com/Confidenceman02/elm-animate-height/compare/4.1.0...4.1.1
