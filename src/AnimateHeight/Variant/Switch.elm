@@ -630,6 +630,7 @@ view fn (Config config) (State state_) =
                                     Just (Entered v1) ->
                                         div
                                             [ style "position" "absolute"
+                                            , style "width" "100%"
                                             ]
                                             (fn v1)
 
@@ -666,6 +667,7 @@ viewIncoming : List (Attribute msg) -> (Msg -> msg) -> Internal.TimingFunction -
 viewIncoming incomingOpac inject timing dur content =
     div
         ([ style "position" "absolute"
+         , style "width" "100%"
          , style "transition-property" "opacity"
          , style "transition-timing-function" (Internal.timingToCssValue timing)
          , style "transition-duration" (toMillis dur)
